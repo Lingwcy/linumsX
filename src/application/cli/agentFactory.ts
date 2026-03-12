@@ -16,6 +16,16 @@ import { replaceBlockBetweenAnchorsTool } from '../../domain/tools/content/repla
 import { bashTool, deleteFileTool, editFileTool, readFileTool, writeFileTool } from '../../domain/tools/runtime/index.js';
 import { getListImagesTool, getAddImageTool, getDeleteImageTool, getResizeImageTool, getReplaceImageTool } from '../../domain/tools/image/index.js';
 import { getGenerateTocTool, getUpdateTocTool, getDeleteTocTool } from '../../domain/tools/toc/index.js';
+import {
+	getAddHeaderTool,
+	getAddFooterTool,
+	getGetHeadersFootersTool,
+	getDeleteHeaderTool,
+	getDeleteFooterTool,
+	getAddPageNumberTool,
+	getDeletePageNumberTool,
+	getSetHeaderFooterOptionsTool,
+} from '../../domain/tools/headerFooter/index.js';
 import { ConfigManager } from '../../infrastructure/config/ConfigManager.js';
 
 interface CreateAgentOptions {
@@ -59,6 +69,14 @@ export function createDefaultToolRegistry(): ToolRegistry {
 	registry.register(getGenerateTocTool());
 	registry.register(getUpdateTocTool());
 	registry.register(getDeleteTocTool());
+	registry.register(getAddHeaderTool());
+	registry.register(getAddFooterTool());
+	registry.register(getGetHeadersFootersTool());
+	registry.register(getDeleteHeaderTool());
+	registry.register(getDeleteFooterTool());
+	registry.register(getAddPageNumberTool());
+	registry.register(getDeletePageNumberTool());
+	registry.register(getSetHeaderFooterOptionsTool());
 
 	return registry;
 }

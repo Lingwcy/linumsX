@@ -33,6 +33,14 @@ const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工
 - generate_toc: 根据标题生成目录
 - update_toc: 更新目录
 - delete_toc: 删除目录
+- add_header: 添加页眉
+- add_footer: 添加页脚
+- get_headers_footers: 获取页眉页脚信息
+- delete_header: 删除页眉
+- delete_footer: 删除页脚
+- add_page_number: 添加页码
+- delete_page_number: 删除页码
+- set_header_footer_options: 设置页眉页脚选项（首页不同、奇偶页不同）
 
 工作流程：
 1. 首先使用工具了解文档内容
