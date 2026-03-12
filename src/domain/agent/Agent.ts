@@ -527,11 +527,15 @@ const COMPLETION_PATTERNS = [
 const DOCUMENT_MUTATION_TOOLS = new Set([
   'add_content',
   'add_heading',
+  'add_image',
   'create_document',
+  'delete_image',
   'format_paragraphs',
   'format_table_cells',
   'format_text',
   'replace_block_between_anchors',
+  'replace_image',
+  'resize_image',
   'search_and_replace',
 ]);
 
