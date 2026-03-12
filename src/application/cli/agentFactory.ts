@@ -16,6 +16,7 @@ import { replaceBlockBetweenAnchorsTool } from '../../domain/tools/content/repla
 import { bashTool, deleteFileTool, editFileTool, readFileTool, writeFileTool } from '../../domain/tools/runtime/index.js';
 import { getListImagesTool, getAddImageTool, getDeleteImageTool, getResizeImageTool, getReplaceImageTool } from '../../domain/tools/image/index.js';
 import { getGenerateTocTool, getUpdateTocTool, getDeleteTocTool } from '../../domain/tools/toc/index.js';
+import { getAddNumberingTool, getGetNumberingTool, getRemoveNumberingTool } from '../../domain/tools/numbering/index.js';
 import {
 	getAddHeaderTool,
 	getAddFooterTool,
@@ -69,6 +70,9 @@ export function createDefaultToolRegistry(): ToolRegistry {
 	registry.register(getGenerateTocTool());
 	registry.register(getUpdateTocTool());
 	registry.register(getDeleteTocTool());
+	registry.register(getAddNumberingTool());
+	registry.register(getGetNumberingTool());
+	registry.register(getRemoveNumberingTool());
 	registry.register(getAddHeaderTool());
 	registry.register(getAddFooterTool());
 	registry.register(getGetHeadersFootersTool());

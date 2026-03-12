@@ -33,6 +33,9 @@ const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工
 - generate_toc: 根据标题生成目录
 - update_toc: 更新目录
 - delete_toc: 删除目录
+- add_numbering: 添加多级列表编号
+- get_numbering: 获取编号信息
+- remove_numbering: 移除编号
 - add_header: 添加页眉
 - add_footer: 添加页脚
 - get_headers_footers: 获取页眉页脚信息
