@@ -515,39 +515,39 @@ export function insertTocIntoDocument(
 	const levelRange = `${Math.min(...headingLevels)}-${Math.max(...headingLevels)}`;
 
 	// 创建目录标题段落
-	const titlePara = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
+	const titlePara = createWordElement(doc, 'p');
 
 	// 标题样式
-	const titlePPr = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pPr');
-	const titlePStyle = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pStyle');
+	const titlePPr = createWordElement(doc, 'pPr');
+	const titlePStyle = createWordElement(doc, 'pStyle');
 	titlePStyle.setAttribute('w:val', 'TOC Heading');
 	titlePPr.appendChild(titlePStyle);
 	titlePara.appendChild(titlePPr);
 
 	// 标题文本
-	const titleR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
-	const titleT = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
+	const titleR = createWordElement(doc, 'r');
+	const titleT = createWordElement(doc, 't');
 	titleT.textContent = title;
 	titleR.appendChild(titleT);
 	titlePara.appendChild(titleR);
 
 	// 创建目录字段段落
-	const tocPara = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
+	const tocPara = createWordElement(doc, 'p');
 
 	// 目录段落样式
-	const tocPPr = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pPr');
-	const tocPStyle = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pStyle');
+	const tocPPr = createWordElement(doc, 'pPr');
+	const tocPStyle = createWordElement(doc, 'pStyle');
 	tocPStyle.setAttribute('w:val', 'TOC1');
 	tocPPr.appendChild(tocPStyle);
 	tocPara.appendChild(tocPPr);
 
 	// fldChar begin
-	const beginR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
-	const beginFldChar = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldChar');
+	const beginR = createWordElement(doc, 'r');
+	const beginFldChar = createWordElement(doc, 'fldChar');
 	beginFldChar.setAttribute('w:fldCharType', 'begin');
 
 	// fldData - 存储目录指令
-	const fldData = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldData');
+	const fldData = createWordElement(doc, 'fldData');
 	fldData.textContent = `\\o ${levelRange}\\h\\z\\u`;
 
 	beginFldChar.appendChild(fldData);
@@ -555,23 +555,23 @@ export function insertTocIntoDocument(
 	tocPara.appendChild(beginR);
 
 	// 目录指令显示文本
-	const instrR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
-	const instrT = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
-	instrT.textContent = `目录`;
+	const instrR = createWordElement(doc, 'r');
+	const instrT = createWordElement(doc, 't');
+	instrT.textContent = title;
 	instrT.setAttribute('xml:space', 'preserve');
 	instrR.appendChild(instrT);
 	tocPara.appendChild(instrR);
 
 	// fldChar separate
-	const sepR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
-	const sepFldChar = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldChar');
+	const sepR = createWordElement(doc, 'r');
+	const sepFldChar = createWordElement(doc, 'fldChar');
 	sepFldChar.setAttribute('w:fldCharType', 'separate');
 	sepR.appendChild(sepFldChar);
 	tocPara.appendChild(sepR);
 
 	// fldChar end
-	const endR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
-	const endFldChar = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldChar');
+	const endR = createWordElement(doc, 'r');
+	const endFldChar = createWordElement(doc, 'fldChar');
 	endFldChar.setAttribute('w:fldCharType', 'end');
 	endR.appendChild(endFldChar);
 	tocPara.appendChild(endR);
