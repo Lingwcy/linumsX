@@ -5,3 +5,4 @@ export { getDeleteHeaderTool } from './deleteHeader.js';
 export { getDeleteFooterTool } from './deleteFooter.js';
 export { getAddPageNumberTool } from './addPageNumber.js';
 export { getDeletePageNumberTool } from './deletePageNumber.js';
+export { getSetHeaderFooterOptionsTool } from './setHeaderFooterOptions.js';
