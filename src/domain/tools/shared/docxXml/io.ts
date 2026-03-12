@@ -6,6 +6,10 @@ import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import { AgentError, ErrorCode } from '../../../../shared/errors/AgentError.js';
 import { parseXmlDocument, serializeXmlDocument } from './dom.js';
 import { LoadedDocxXml } from './types.js';
+import { EMU_PER_INCH, IMAGE_EXT_TO_MIME } from './structure.js';
+
+// 魔法数字：docPr id 的随机数范围
+const RANDOM_ID_MAX = 100000;
 
 export async function ensureEditableDocPath(docPath: string, allowExisting = true): Promise<void> {
 	if (!docPath || typeof docPath !== 'string') {
@@ -101,23 +105,12 @@ export async function listDocxFiles(directory: string): Promise<Array<{ path: st
 	return results.sort((left, right) => left.path.localeCompare(right.path));
 }
 
-// 获取支持的图像类型映射
-const IMAGE_EXTENSIONS: Record<string, string> = {
-	'.png': 'image/png',
-	'.jpg': 'image/jpeg',
-	'.jpeg': 'image/jpeg',
-	'.gif': 'image/gif',
-	'.bmp': 'image/bmp',
-	'.emf': 'image/x-emf',
-	'.wmf': 'image/x-wmf',
-};
-
 export function getImageMimeType(filePath: string): string | null {
 	const ext = path.extname(filePath).toLowerCase();
-	return IMAGE_EXTENSIONS[ext] || null;
+	// Remove leading dot and look up in IMAGE_EXT_TO_MIME
+	const extKey = ext.startsWith('.') ? ext.slice(1) : ext;
+	return IMAGE_EXT_TO_MIME[extKey] || null;
 }
-
-const EMU_PER_INCH = 914400;
 
 export async function addImageToDocx(
 	docPath: string,
@@ -130,6 +123,14 @@ export async function addImageToDocx(
 	} = {}
 ): Promise<{ success: boolean; imageName?: string; error?: string }> {
 	const { width = 3, height, description } = options;
+
+	// 参数验证
+	if (width !== undefined && (width <= 0 || width > 100)) {
+		return { success: false, error: '宽度必须在 0-100 英寸之间' };
+	}
+	if (height !== undefined && (height <= 0 || height > 100)) {
+		return { success: false, error: '高度必须在 0-100 英寸之间' };
+	}
 
 	// 读取图像文件
 	const imageBuffer = await fs.readFile(imagePath);
@@ -146,7 +147,12 @@ export async function addImageToDocx(
 	// 检查 media 目录是否存在，不存在则创建
 	const mediaDir = 'word/media';
 	const mediaEntries = zip.getEntries().filter(e => e.entryName.startsWith(mediaDir));
-	const nextImageId = mediaEntries.length + 1;
+
+	// 获取或创建关系文件，并找到最大的 rId
+	let relsEntry = zip.getEntry('word/_rels/document.xml.rels');
+	let relsXml = relsEntry ? relsEntry.getData().toString('utf8') : getDefaultRelsXml();
+	const maxExistingId = getMaxRelsId(relsXml);
+	const nextImageId = maxExistingId + 1;
 
 	// 生成唯一图像名称
 	const ext = path.extname(imageName);
@@ -161,9 +167,7 @@ export async function addImageToDocx(
 	// 添加图像到 ZIP
 	zip.addFile(`${mediaDir}/${uniqueName}`, imageBuffer);
 
-	// 获取或创建关系文件
-	let relsEntry = zip.getEntry('word/_rels/document.xml.rels');
-	let relsXml = relsEntry ? relsEntry.getData().toString('utf8') : getDefaultRelsXml();
+	// 添加图像关系到 rels 文件
 	const imageRelsId = addImageRel(relsXml, uniqueName, nextImageId);
 
 	// 更新关系文件
@@ -191,6 +195,28 @@ function getDefaultRelsXml(): string {
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 </Relationships>`;
+}
+
+/**
+ * Parse rels XML and find the maximum rId number
+ */
+function getMaxRelsId(relsXml: string): number {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(relsXml, 'text/xml');
+	const relationships = doc.getElementsByTagName('Relationship');
+	let maxId = 0;
+
+	for (let i = 0; i < relationships.length; i++) {
+		const id = relationships[i].getAttribute('Id');
+		if (id && id.startsWith('rId')) {
+			const num = parseInt(id.slice(3), 10);
+			if (!isNaN(num) && num > maxId) {
+				maxId = num;
+			}
+		}
+	}
+
+	return maxId;
 }
 
 function addImageRel(relsXml: string, imageName: string, id: number): string {
@@ -239,7 +265,7 @@ function insertImageIntoDocument(
 
 	// wp:docPr
 	const docPr = doc.createElementNS('http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing', 'wp:docPr');
-	docPr.setAttribute('id', String(Math.floor(Math.random() * 100000)));
+	docPr.setAttribute('id', String(Math.floor(Math.random() * RANDOM_ID_MAX)));
 	docPr.setAttribute('name', imageName);
 	if (options.description) {
 		docPr.setAttribute('descr', options.description);

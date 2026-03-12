@@ -48,9 +48,9 @@ export function parseTableEntries(source: LoadedDocxXml | XmlDocument | XmlEleme
 	return getWordElements(root, 'tbl').map((element: XmlElement) => ({ element }));
 }
 
-const EMU_PER_INCH = 914400;
+export const EMU_PER_INCH = 914400;
 
-const IMAGE_EXT_TO_MIME: Record<string, string> = {
+export const IMAGE_EXT_TO_MIME: Record<string, string> = {
 	png: 'image/png',
 	jpeg: 'image/jpeg',
 	jpg: 'image/jpeg',
