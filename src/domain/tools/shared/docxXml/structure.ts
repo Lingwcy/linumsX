@@ -593,6 +593,15 @@ export function insertTocIntoDocument(
 }
 
 /**
+ * 获取文档的 sectPr 元素
+ */
+function getSectPr(source: LoadedDocxXml | XmlDocument | XmlElement): XmlElement | null {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+	const body = getBody(root);
+	return getDirectChild(body, 'sectPr');
+}
+
+/**
  * 解析文档中的节配置
  */
 export function parseSectionConfig(source: LoadedDocxXml | XmlDocument | XmlElement): {
@@ -603,9 +612,7 @@ export function parseSectionConfig(source: LoadedDocxXml | XmlDocument | XmlElem
 		diffEven: boolean;
 	};
 } {
-	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
-	const body = getBody(root);
-	const sectPr = getDirectChild(body, 'sectPr');
+	const sectPr = getSectPr(source);
 
 	if (!sectPr) {
 		return {
@@ -619,6 +626,10 @@ export function parseSectionConfig(source: LoadedDocxXml | XmlDocument | XmlElem
 	const headerRefs = getDirectWordChildren(sectPr, 'headerReference');
 	const footerRefs = getDirectWordChildren(sectPr, 'footerReference');
 
+	// 检查奇偶页不同的设置
+	const evenHeaderRefs = getDirectWordChildren(sectPr, 'evenHeader');
+	const evenFooterRefs = getDirectWordChildren(sectPr, 'evenFooter');
+
 	// 获取页眉页脚设置
 	const titlePg = getDirectChild(sectPr, 'titlePg');
 
@@ -627,21 +638,19 @@ export function parseSectionConfig(source: LoadedDocxXml | XmlDocument | XmlElem
 		hasFooter: footerRefs.length > 0,
 		headerFooterOptions: {
 			diffFirst: !!titlePg,
-			diffEven: false // 需要检查 evenHeader/evenFooter 引用
+			diffEven: evenHeaderRefs.length > 0 || evenFooterRefs.length > 0
 		}
 	};
 }
 
 /**
- * 获取当前使用的 header/footer 文件名
+ * 获取当前使用的 header/footer 引用ID
  */
 export function getHeaderFooterRefs(source: LoadedDocxXml | XmlDocument | XmlElement): {
 	headers: string[];
 	footers: string[];
 } {
-	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
-	const body = getBody(root);
-	const sectPr = getDirectChild(body, 'sectPr');
+	const sectPr = getSectPr(source);
 
 	const headers: string[] = [];
 	const footers: string[] = [];
