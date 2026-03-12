@@ -40,6 +40,8 @@ export {
 	parseImageEntries,
 	parseTocEntries,
 	insertTocIntoDocument,
+	parseSectionConfig,
+	getHeaderFooterRefs,
 } from './structure.js';
 
 export {
