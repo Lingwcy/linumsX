@@ -8,7 +8,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx vitest:*)",
       "Bash(git:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(ls:*)"
     ]
   }
 }
