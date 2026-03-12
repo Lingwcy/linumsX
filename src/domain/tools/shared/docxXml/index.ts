@@ -38,6 +38,8 @@ export {
 	unmergeCells,
 	MergeCellsOptions,
 	parseImageEntries,
+	parseTocEntries,
+	insertTocIntoDocument,
 } from './structure.js';
 
 export {
