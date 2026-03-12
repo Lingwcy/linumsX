@@ -9,6 +9,7 @@ export type {
 	XmlDocument,
 	XmlElement,
 	XmlNode,
+	ImageEntry,
 } from './types.js';
 
 export {
@@ -34,6 +35,7 @@ export {
 	mergeCells,
 	unmergeCells,
 	MergeCellsOptions,
+	parseImageEntries,
 } from './structure.js';
 
 export {
