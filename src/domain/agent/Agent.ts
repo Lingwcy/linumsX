@@ -30,6 +30,9 @@ const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工
 - delete_image: 删除文档中的图像
 - resize_image: 修改图像尺寸
 - replace_image: 替换文档中的图像
+- generate_toc: 根据标题生成目录
+- update_toc: 更新目录
+- delete_toc: 删除目录
 
 工作流程：
 1. 首先使用工具了解文档内容
