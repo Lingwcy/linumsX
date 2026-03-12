@@ -62,3 +62,10 @@ export interface ImageEntry {
 	description?: string;
 	element: XmlElement;
 }
+
+export interface TocEntry {
+	index: number;
+	element: XmlElement;
+	title?: string;
+	levelRange?: string;
+}

@@ -1,4 +1,5 @@
 import { AgentError, ErrorCode } from '../../../../shared/errors/AgentError.js';
+import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
 import {
 	buildRunElement,
 	createWordElement,
@@ -12,7 +13,7 @@ import {
 	parseXmlDocument,
 	serializeXmlDocument,
 } from './dom.js';
-import { ImageEntry, LoadedDocxXml, ParagraphEntry, TableEntry, XmlDocument, XmlElement } from './types.js';
+import { ImageEntry, LoadedDocxXml, ParagraphEntry, TableEntry, TocEntry, XmlDocument, XmlElement } from './types.js';
 
 export function parseParagraphEntries(source: LoadedDocxXml | XmlDocument | XmlElement): ParagraphEntry[] {
 	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
@@ -456,4 +457,137 @@ export function unmergeCells(
 	}
 
 	return { success: true };
+}
+
+/**
+ * 解析文档中的目录条目
+ */
+export function parseTocEntries(source: LoadedDocxXml | XmlDocument | XmlElement): TocEntry[] {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+	const tocs: TocEntry[] = [];
+
+	// 查找所有包含目录字段的段落
+	const paragraphs = getWordElements(root, 'p');
+	let tocIndex = 0;
+
+	for (const para of paragraphs) {
+		const pPr = getDirectChild(para, 'pPr');
+		const pStyle = pPr ? getDirectChild(pPr, 'pStyle') : null;
+		const styleVal = pStyle?.getAttribute('w:val');
+
+		// 检查是否是目录段落或包含目录字段
+		if (styleVal === 'TOC' || styleVal?.startsWith('TOC')) {
+			tocs.push({ index: tocIndex++, element: para });
+		}
+
+		// 检查 fldChar 字段
+		const rs = getDirectWordChildren(para, 'r');
+		for (const r of rs) {
+			const fldChar = getDirectChild(r, 'fldChar');
+			if (fldChar && fldChar.getAttribute('w:fldCharType') === 'begin') {
+				const fldData = getDirectChild(fldChar, 'fldData');
+				if (fldData && fldData.textContent?.includes('\\o')) {
+					tocs.push({ index: tocIndex++, element: para });
+				}
+			}
+		}
+	}
+
+	return tocs;
+}
+
+/**
+ * 在文档中插入目录
+ */
+export function insertTocIntoDocument(
+	docXml: string,
+	options: {
+		position?: number;
+		headingLevels?: number[];
+		title?: string;
+	} = {}
+): string {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(docXml, 'text/xml');
+	const body = doc.documentElement;
+
+	const { headingLevels = [1, 2, 3], title = '目录' } = options;
+	const levelRange = `${Math.min(...headingLevels)}-${Math.max(...headingLevels)}`;
+
+	// 创建目录标题段落
+	const titlePara = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
+
+	// 标题样式
+	const titlePPr = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pPr');
+	const titlePStyle = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pStyle');
+	titlePStyle.setAttribute('w:val', 'TOC Heading');
+	titlePPr.appendChild(titlePStyle);
+	titlePara.appendChild(titlePPr);
+
+	// 标题文本
+	const titleR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+	const titleT = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
+	titleT.textContent = title;
+	titleR.appendChild(titleT);
+	titlePara.appendChild(titleR);
+
+	// 创建目录字段段落
+	const tocPara = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:p');
+
+	// 目录段落样式
+	const tocPPr = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pPr');
+	const tocPStyle = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:pStyle');
+	tocPStyle.setAttribute('w:val', 'TOC1');
+	tocPPr.appendChild(tocPStyle);
+	tocPara.appendChild(tocPPr);
+
+	// fldChar begin
+	const beginR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+	const beginFldChar = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldChar');
+	beginFldChar.setAttribute('w:fldCharType', 'begin');
+
+	// fldData - 存储目录指令
+	const fldData = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldData');
+	fldData.textContent = `\\o ${levelRange}\\h\\z\\u`;
+
+	beginFldChar.appendChild(fldData);
+	beginR.appendChild(beginFldChar);
+	tocPara.appendChild(beginR);
+
+	// 目录指令显示文本
+	const instrR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+	const instrT = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');
+	instrT.textContent = `目录`;
+	instrT.setAttribute('xml:space', 'preserve');
+	instrR.appendChild(instrT);
+	tocPara.appendChild(instrR);
+
+	// fldChar separate
+	const sepR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+	const sepFldChar = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldChar');
+	sepFldChar.setAttribute('w:fldCharType', 'separate');
+	sepR.appendChild(sepFldChar);
+	tocPara.appendChild(sepR);
+
+	// fldChar end
+	const endR = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
+	const endFldChar = doc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:fldChar');
+	endFldChar.setAttribute('w:fldCharType', 'end');
+	endR.appendChild(endFldChar);
+	tocPara.appendChild(endR);
+
+	// 插入位置
+	const paragraphs = body.getElementsByTagNameNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'p');
+	let insertPosition = options.position ?? 0;
+
+	if (paragraphs.length > 0 && insertPosition < paragraphs.length) {
+		body.insertBefore(titlePara, paragraphs[insertPosition]);
+		body.insertBefore(tocPara, paragraphs[insertPosition + 1]);
+	} else {
+		// 插入到文档开头
+		body.insertBefore(titlePara, body.firstChild);
+		body.insertBefore(tocPara, titlePara.nextSibling);
+	}
+
+	return new XMLSerializer().serializeToString(doc);
 }
