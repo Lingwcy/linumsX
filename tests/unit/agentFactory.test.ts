@@ -21,11 +21,13 @@ describe('createDefaultToolRegistry', () => {
 			'delete_image',
 			'delete_table_column',
 			'delete_table_row',
+			'delete_toc',
 			'edit_file',
 			'format_paragraphs',
 			'format_table_borders',
 			'format_table_cells',
 			'format_text',
+			'generate_toc',
 			'get_document_info',
 			'get_document_outline',
 			'get_document_text',
@@ -38,6 +40,7 @@ describe('createDefaultToolRegistry', () => {
 			'resize_image',
 			'search_and_replace',
 			'unmerge_cells',
+			'update_toc',
 			'write_file',
 		]);
 	});
