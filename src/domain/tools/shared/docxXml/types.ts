@@ -69,3 +69,17 @@ export interface TocEntry {
 	title?: string;
 	levelRange?: string;
 }
+
+export interface NumberingLevel {
+	level: number;
+	startNumber?: number;
+	numFmt?: string;
+	lvlText?: string;
+	pStyle?: string;
+}
+
+export interface NumberingEntry {
+	numId: string;
+	abstractNumId: string;
+	levels: NumberingLevel[];
+}

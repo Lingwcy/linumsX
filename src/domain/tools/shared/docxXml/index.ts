@@ -1,5 +1,7 @@
 export type {
 	LoadedDocxXml,
+	NumberingEntry,
+	NumberingLevel,
 	ParagraphEntry,
 	ParagraphFormatOptions,
 	TableBorderOptions,
@@ -42,6 +44,9 @@ export {
 	insertTocIntoDocument,
 	parseSectionConfig,
 	getHeaderFooterRefs,
+	NUMBERING_PRESETS,
+	parseNumberingEntries,
+	parseAbstractNumbering,
 } from './structure.js';
 
 export {

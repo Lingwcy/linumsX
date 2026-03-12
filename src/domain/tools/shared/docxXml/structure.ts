@@ -13,7 +13,7 @@ import {
 	parseXmlDocument,
 	serializeXmlDocument,
 } from './dom.js';
-import { ImageEntry, LoadedDocxXml, ParagraphEntry, TableEntry, TocEntry, XmlDocument, XmlElement } from './types.js';
+import { ImageEntry, LoadedDocxXml, NumberingEntry, NumberingLevel, ParagraphEntry, TableEntry, TocEntry, XmlDocument, XmlElement } from './types.js';
 
 export function parseParagraphEntries(source: LoadedDocxXml | XmlDocument | XmlElement): ParagraphEntry[] {
 	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
@@ -673,4 +673,119 @@ export function getHeaderFooterRefs(source: LoadedDocxXml | XmlDocument | XmlEle
 	}
 
 	return { headers, footers };
+}
+
+/**
+ * 预设编号定义
+ */
+export const NUMBERING_PRESETS = {
+	'heading-outline': {
+		name: 'heading-outline',
+		levels: [
+			{ level: 0, numFmt: 'decimal', lvlText: '%1.', pStyle: 'Heading1', startNumber: 1 },
+			{ level: 1, numFmt: 'decimal', lvlText: '%1.%2.', pStyle: 'Heading2', startNumber: 1 },
+			{ level: 2, numFmt: 'decimal', lvlText: '%1.%2.%3.', pStyle: 'Heading3', startNumber: 1 },
+			{ level: 3, numFmt: 'decimal', lvlText: '%1.%2.%3.%4.', pStyle: 'Heading4', startNumber: 1 },
+			{ level: 4, numFmt: 'decimal', lvlText: '%1.%2.%3.%4.%5.', pStyle: 'Heading5', startNumber: 1 },
+			{ level: 5, numFmt: 'decimal', lvlText: '%1.%2.%3.%4.%5.%6.', pStyle: 'Heading6', startNumber: 1 },
+			{ level: 6, numFmt: 'decimal', lvlText: '%1.%2.%3.%4.%5.%6.%7.', startNumber: 1 },
+			{ level: 7, numFmt: 'decimal', lvlText: '%1.%2.%3.%4.%5.%6.%7.%8.', startNumber: 1 },
+			{ level: 8, numFmt: 'decimal', lvlText: '%1.%2.%3.%4.%5.%6.%7.%8.%9.', startNumber: 1 },
+		]
+	},
+	'legal': {
+		name: 'legal',
+		levels: [
+			{ level: 0, numFmt: 'decimal', lvlText: '%1.', startNumber: 1 },
+			{ level: 1, numFmt: 'decimal', lvlText: '%1.%2.', startNumber: 1 },
+			{ level: 2, numFmt: 'decimal', lvlText: '%1.%2.%3.', startNumber: 1 },
+		]
+	},
+	'decimal-paren': {
+		name: 'decimal-paren',
+		levels: [
+			{ level: 0, numFmt: 'decimal', lvlText: '%1)', startNumber: 1 },
+		]
+	},
+	'bullet': {
+		name: 'bullet',
+		levels: [
+			{ level: 0, numFmt: 'bullet', lvlText: '\u2022', startNumber: 1 },
+			{ level: 1, numFmt: 'bullet', lvlText: '\u25E6', startNumber: 1 },
+			{ level: 2, numFmt: 'bullet', lvlText: '\u25AA', startNumber: 1 },
+		]
+	},
+	'roman-lower': {
+		name: 'roman-lower',
+		levels: [
+			{ level: 0, numFmt: 'lowerRoman', lvlText: '%1.', startNumber: 1 },
+		]
+	},
+};
+
+/**
+ * 解析文档中的编号样式
+ */
+export function parseNumberingEntries(source: LoadedDocxXml | XmlDocument | XmlElement): NumberingEntry[] {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+
+	const entries: NumberingEntry[] = [];
+
+	// 查找所有 w:num 元素
+	const nums = root.getElementsByTagName('w:num');
+	for (let i = 0; i < nums.length; i++) {
+		const num = nums[i];
+		const numId = num.getAttribute('w:numId');
+		const abstractNumIdEl = num.getElementsByTagName('w:abstractNumId')[0];
+		const abstractNumId = abstractNumIdEl?.getAttribute('w:val');
+
+		if (numId && abstractNumId) {
+			entries.push({
+				numId,
+				abstractNumId,
+				levels: []
+			});
+		}
+	}
+
+	return entries;
+}
+
+/**
+ * 获取抽象编号定义
+ */
+export function parseAbstractNumbering(source: LoadedDocxXml | XmlDocument | XmlElement): Map<string, NumberingLevel[]> {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+	const abstractNums = root.getElementsByTagName('w:abstractNum');
+
+	const abstracts = new Map<string, NumberingLevel[]>();
+
+	for (let i = 0; i < abstractNums.length; i++) {
+		const abs = abstractNums[i];
+		const absId = abs.getAttribute('w:abstractNumId');
+		if (!absId) continue;
+
+		const levels: NumberingLevel[] = [];
+		const lvlElements = abs.getElementsByTagName('w:lvl');
+
+		for (let j = 0; j < lvlElements.length; j++) {
+			const lvl = lvlElements[j];
+			const lvlTextEl = lvl.getElementsByTagName('w:lvlText')[0];
+			const numFmtEl = lvl.getElementsByTagName('w:numFmt')[0];
+			const startEl = lvl.getElementsByTagName('w:start')[0];
+			const pStyleEl = lvl.getElementsByTagName('w:pStyle')[0];
+
+			levels.push({
+				level: j,
+				lvlText: lvlTextEl?.getAttribute('w:val'),
+				numFmt: numFmtEl?.getAttribute('w:val'),
+				startNumber: startEl ? parseInt(startEl.getAttribute('w:val') || '1') : 1,
+				pStyle: pStyleEl?.getAttribute('w:val')
+			});
+		}
+
+		abstracts.set(absId, levels);
+	}
+
+	return abstracts;
 }
