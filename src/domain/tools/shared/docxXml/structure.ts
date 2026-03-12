@@ -591,3 +591,77 @@ export function insertTocIntoDocument(
 
 	return new XMLSerializer().serializeToString(doc);
 }
+
+/**
+ * 解析文档中的节配置
+ */
+export function parseSectionConfig(source: LoadedDocxXml | XmlDocument | XmlElement): {
+	hasHeader: boolean;
+	hasFooter: boolean;
+	headerFooterOptions: {
+		diffFirst: boolean;
+		diffEven: boolean;
+	};
+} {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+	const body = getBody(root);
+	const sectPr = getDirectChild(body, 'sectPr');
+
+	if (!sectPr) {
+		return {
+			hasHeader: false,
+			hasFooter: false,
+			headerFooterOptions: { diffFirst: false, diffEven: false }
+		};
+	}
+
+	// 检查 headerReference 和 footerReference
+	const headerRefs = getDirectWordChildren(sectPr, 'headerReference');
+	const footerRefs = getDirectWordChildren(sectPr, 'footerReference');
+
+	// 获取页眉页脚设置
+	const titlePg = getDirectChild(sectPr, 'titlePg');
+
+	return {
+		hasHeader: headerRefs.length > 0,
+		hasFooter: footerRefs.length > 0,
+		headerFooterOptions: {
+			diffFirst: !!titlePg,
+			diffEven: false // 需要检查 evenHeader/evenFooter 引用
+		}
+	};
+}
+
+/**
+ * 获取当前使用的 header/footer 文件名
+ */
+export function getHeaderFooterRefs(source: LoadedDocxXml | XmlDocument | XmlElement): {
+	headers: string[];
+	footers: string[];
+} {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+	const body = getBody(root);
+	const sectPr = getDirectChild(body, 'sectPr');
+
+	const headers: string[] = [];
+	const footers: string[] = [];
+
+	if (!sectPr) {
+		return { headers, footers };
+	}
+
+	const headerRefs = getDirectWordChildren(sectPr, 'headerReference');
+	const footerRefs = getDirectWordChildren(sectPr, 'footerReference');
+
+	for (const ref of headerRefs) {
+		const id = ref.getAttribute('r:id');
+		if (id) headers.push(id);
+	}
+
+	for (const ref of footerRefs) {
+		const id = ref.getAttribute('r:id');
+		if (id) footers.push(id);
+	}
+
+	return { headers, footers };
+}
