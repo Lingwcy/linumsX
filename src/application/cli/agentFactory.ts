@@ -14,6 +14,7 @@ import { addContentTool } from '../../domain/tools/content/addContent.js';
 import { addHeadingTool } from '../../domain/tools/content/addHeading.js';
 import { replaceBlockBetweenAnchorsTool } from '../../domain/tools/content/replaceBlockBetweenAnchors.js';
 import { bashTool, deleteFileTool, editFileTool, readFileTool, writeFileTool } from '../../domain/tools/runtime/index.js';
+import { getListImagesTool, getAddImageTool, getDeleteImageTool, getResizeImageTool, getReplaceImageTool } from '../../domain/tools/image/index.js';
 import { ConfigManager } from '../../infrastructure/config/ConfigManager.js';
 
 interface CreateAgentOptions {
@@ -49,6 +50,11 @@ export function createDefaultToolRegistry(): ToolRegistry {
 	registry.register(addContentTool);
 	registry.register(addHeadingTool);
 	registry.register(replaceBlockBetweenAnchorsTool);
+	registry.register(getListImagesTool());
+	registry.register(getAddImageTool());
+	registry.register(getDeleteImageTool());
+	registry.register(getResizeImageTool());
+	registry.register(getReplaceImageTool());
 
 	return registry;
 }

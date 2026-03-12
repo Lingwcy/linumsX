@@ -25,6 +25,11 @@ const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工
 - add_content: 添加新内容（段落、表格等）
 - add_heading: 添加标题
 - replace_block_between_anchors: 替换锚点之间的内容
+- list_images: 列出文档中的所有图像
+- add_image: 添加图像到文档
+- delete_image: 删除文档中的图像
+- resize_image: 修改图像尺寸
+- replace_image: 替换文档中的图像
 
 工作流程：
 1. 首先使用工具了解文档内容
