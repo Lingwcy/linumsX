@@ -18,6 +18,8 @@ export {
 	saveDocxXml,
 	createEmptyDocument,
 	listDocxFiles,
+	getImageMimeType,
+	addImageToDocx,
 } from './io.js';
 
 export {
