@@ -5,13 +5,14 @@ import {
 	getBody,
 	getDirectChild,
 	getDirectWordChildren,
+	getLocalName,
 	getParagraphStyle,
 	getParagraphText,
 	getWordElements,
 	parseXmlDocument,
 	serializeXmlDocument,
 } from './dom.js';
-import { LoadedDocxXml, ParagraphEntry, TableEntry, XmlDocument, XmlElement } from './types.js';
+import { ImageEntry, LoadedDocxXml, ParagraphEntry, TableEntry, XmlDocument, XmlElement } from './types.js';
 
 export function parseParagraphEntries(source: LoadedDocxXml | XmlDocument | XmlElement): ParagraphEntry[] {
 	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
@@ -45,6 +46,116 @@ export function replaceParagraphAt(loaded: LoadedDocxXml, paragraph: ParagraphEn
 export function parseTableEntries(source: LoadedDocxXml | XmlDocument | XmlElement): TableEntry[] {
 	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
 	return getWordElements(root, 'tbl').map((element: XmlElement) => ({ element }));
+}
+
+const EMU_PER_INCH = 914400;
+
+const IMAGE_EXT_TO_MIME: Record<string, string> = {
+	png: 'image/png',
+	jpeg: 'image/jpeg',
+	jpg: 'image/jpeg',
+	gif: 'image/gif',
+	bmp: 'image/bmp',
+	tiff: 'image/tiff',
+	svg: 'image/svg+xml',
+};
+
+/**
+ * Infer MIME type from image filename/extension
+ */
+function inferMimeType(name: string): string {
+	const ext = name.split('.').pop()?.toLowerCase() ?? '';
+	return IMAGE_EXT_TO_MIME[ext] ?? 'image/png';
+}
+
+/**
+ * Get element by namespace prefix (e.g., wp:inline, a:graphic)
+ */
+function getElementsByTagNameNs(element: XmlElement, nsUri: string, localName: string): XmlElement[] {
+	const elements: XmlElement[] = [];
+	const tags = element.getElementsByTagNameNS(nsUri, localName);
+	for (let i = 0; i < tags.length; i++) {
+		elements.push(tags.item(i) as XmlElement);
+	}
+	// Fallback: try with prefix
+	if (elements.length === 0) {
+		const prefixed = element.getElementsByTagName(`${localName}`);
+		for (let i = 0; i < prefixed.length; i++) {
+			const el = prefixed.item(i) as XmlElement;
+			if (getLocalName(el) === localName) {
+				elements.push(el);
+			}
+		}
+	}
+	return elements;
+}
+
+
+export function parseImageEntries(source: LoadedDocxXml | XmlDocument | XmlElement): ImageEntry[] {
+	const root = 'xmlDocument' in (source as LoadedDocxXml) ? (source as LoadedDocxXml).xmlDocument : source;
+
+	// Find all w:drawing elements
+	const drawings = getWordElements(root, 'drawing');
+	const images: ImageEntry[] = [];
+
+	for (const drawing of drawings) {
+		// Check for wp:inline or wp:anchor
+		const inline = getDirectWordChildren(drawing, 'inline')[0];
+		const anchor = getDirectWordChildren(drawing, 'anchor')[0];
+		const graphicContainer = inline ?? anchor;
+
+		if (!graphicContainer) continue;
+
+		// Get wp:graphic
+		const graphics = getDirectWordChildren(graphicContainer, 'graphic');
+		for (const graphic of graphics) {
+			// Get wp:graphicData
+			const graphicDataList = getDirectWordChildren(graphic, 'graphicData');
+			for (const graphicData of graphicDataList) {
+				// Check for pic element (picture)
+				const picList = getDirectWordChildren(graphicData, 'pic');
+				for (const pic of picList) {
+					// Extract name from nvPicPr/picLocks/@name
+					const nvPicPr = getDirectWordChildren(pic, 'nvPicPr')[0];
+					const picLocks = nvPicPr ? getDirectWordChildren(nvPicPr, 'picLocks')[0] : null;
+					const name = picLocks?.getAttribute('name') ?? `image_${images.length + 1}`;
+
+					// Extract id from blipFill/blip/@r:embed
+					const blipFill = getDirectWordChildren(pic, 'blipFill')[0];
+					const blip = blipFill ? getDirectWordChildren(blipFill, 'blip')[0] : null;
+					const id = blip?.getAttribute('r:embed') ?? '';
+
+					// Extract width/height from spPr/xfrm/ext/@cx/@cy
+					const spPr = getDirectWordChildren(pic, 'spPr')[0];
+					const xfrm = spPr ? getDirectWordChildren(spPr, 'xfrm')[0] : null;
+					const ext = xfrm ? getDirectWordChildren(xfrm, 'ext')[0] : null;
+
+					let width: number | undefined;
+					let height: number | undefined;
+
+					if (ext) {
+						const cx = ext.getAttribute('cx');
+						const cy = ext.getAttribute('cy');
+						if (cx) width = parseInt(cx, 10) / EMU_PER_INCH;
+						if (cy) height = parseInt(cy, 10) / EMU_PER_INCH;
+					}
+
+					const type = inferMimeType(name);
+
+					images.push({
+						name,
+						id,
+						type,
+						width,
+						height,
+						element: pic,
+					});
+				}
+			}
+		}
+	}
+
+	return images;
 }
 
 export function replaceBlockBetweenAnchors(

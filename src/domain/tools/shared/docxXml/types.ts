@@ -52,3 +52,13 @@ export interface TableBorderOptions {
 	borderStyle?: 'single' | 'double' | 'none';
 	borderColor?: string;
 }
+
+export interface ImageEntry {
+	name: string;
+	id: string;
+	type: string;
+	width?: number;
+	height?: number;
+	description?: string;
+	element: XmlElement;
+}
