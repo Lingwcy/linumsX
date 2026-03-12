@@ -1,7 +1,11 @@
 import { Tool } from '../types.js';
 import { ensureEditableDocPath, loadDocxXml, saveDocxXml } from '../shared/docxXml/io.js';
-import { insertTocIntoDocument } from '../shared/docxXml/structure.js';
-import { Document } from '../../document/entities/Document.js';
+import { insertTocIntoDocument, parseParagraphEntries } from '../shared/docxXml/structure.js';
+
+interface HeadingOutline {
+  level: number;
+  text: string;
+}
 
 export function getGenerateTocTool(): Tool {
   return {
@@ -28,11 +32,21 @@ export function getGenerateTocTool(): Tool {
       try {
         await ensureEditableDocPath(docPath);
 
-        // 先加载文档检查是否有标题
-        const doc = new Document(docPath);
-        await doc.load();
+        // 加载文档 XML（只加载一次）
+        const loaded = loadDocxXml(docPath);
+        const paragraphs = parseParagraphEntries(loaded);
 
-        const headings = doc.headingOutline;
+        // 提取标题大纲
+        const headings: HeadingOutline[] = [];
+        for (const para of paragraphs) {
+          const { text, style } = para;
+          const headingMatch = /^Heading(\d+)$/.exec(style || '');
+          if (text.trim() && headingMatch) {
+            const level = parseInt(headingMatch[1], 10);
+            headings.push({ level, text });
+          }
+        }
+
         if (headings.length === 0) {
           return {
             success: false,
@@ -49,8 +63,23 @@ export function getGenerateTocTool(): Tool {
           };
         }
 
-        // 加载并插入 TOC
-        const loaded = loadDocxXml(docPath);
+        // 验证 position 参数
+        if (position !== undefined) {
+          if (position < 0) {
+            return {
+              success: false,
+              error: 'position 不能为负数',
+            };
+          }
+          if (position >= paragraphs.length) {
+            return {
+              success: false,
+              error: `position (${position}) 超出文档段落数量 (${paragraphs.length})`,
+            };
+          }
+        }
+
+        // 插入 TOC
         const updatedXml = insertTocIntoDocument(loaded.xml, {
           position,
           headingLevels,
