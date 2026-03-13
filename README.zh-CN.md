@@ -46,6 +46,8 @@ linumsX 走的是第三条路：
 | 格式控制 | 文本样式、段落样式、表格样式、表格边框 |
 | 图像操作 | 添加、删除、调整尺寸、替换文档中的图像 |
 | 目录生成 | 根据标题生成、更新、删除目录 |
+| 页眉页脚 | 添加、删除、获取页眉页脚；页码设置 |
+| 多级列表 | 预设样式的多级编号 |
 | 表格增强 | 创建表格、增删行列、单元格合并/拆分、预设样式 |
 | 交互模式 | 提供 Ink 终端 UI，适合连续多轮编辑 |
 | 工具化执行 | 所有能力通过 Tool Registry 注册，便于扩展和测试 |
@@ -97,6 +99,17 @@ npx linumsx info "D:\docs\proposal.docx"
 | `generate_toc` | 生成目录 |
 | `update_toc` | 更新目录 |
 | `delete_toc` | 删除目录 |
+| `add_header` | 添加页眉 |
+| `add_footer` | 添加页脚 |
+| `get_headers_footers` | 获取页眉页脚信息 |
+| `delete_header` | 删除页眉 |
+| `delete_footer` | 删除页脚 |
+| `add_page_number` | 添加页码 |
+| `delete_page_number` | 删除页码 |
+| `set_header_footer_options` | 设置页眉页脚选项（首页不同、奇偶页不同） |
+| `add_numbering` | 添加多级列表编号 |
+| `get_numbering` | 获取编号信息 |
+| `remove_numbering` | 移除编号 |
 
 ### 内容工具
 
@@ -237,5 +250,7 @@ npx vitest run tests/unit/agent.test.ts
 
 - 更丰富的表格布局与样式策略
 - 更稳定的上下文延续与多轮任务编排
-- 更细粒度的段落、编号、页眉页脚控制
+- 脚注与尾注支持
+- 文档属性（元数据）
+- 页面设置（页边距、纸张大小、方向）
 - 更完善的回归测试与样例文档集

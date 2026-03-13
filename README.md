@@ -46,6 +46,8 @@ It's not a chatbot wrapper—it's a `.docx`-oriented agent execution system.
 | Format Control | Text style, paragraph style, table style, table borders |
 | Image Operations | Add, delete, resize, replace images in documents |
 | Table of Contents | Generate, update, delete TOC from headings |
+| Header/Footer | Add, delete, get info for headers/footers; page numbers |
+| Numbering | Multi-level list numbering with presets |
 | Table Enhancement | Create tables, add/delete rows/columns, cell merge/split, preset styles |
 | Interactive Mode | Ink-based terminal UI for continuous multi-turn editing |
 | Tool-Based Execution | All capabilities registered via Tool Registry for easy extension |
@@ -97,6 +99,17 @@ npx linumsx info "D:\docs\proposal.docx"
 | `generate_toc` | Generate table of contents |
 | `update_toc` | Update existing TOC |
 | `delete_toc` | Delete TOC |
+| `add_header` | Add header content |
+| `add_footer` | Add footer content |
+| `get_headers_footers` | Get header/footer information |
+| `delete_header` | Delete header |
+| `delete_footer` | Delete footer |
+| `add_page_number` | Add page numbers |
+| `delete_page_number` | Delete page numbers |
+| `set_header_footer_options` | Set header/footer options (different first page, odd/even) |
+| `add_numbering` | Add multi-level list numbering |
+| `get_numbering` | Get numbering information |
+| `remove_numbering` | Remove numbering |
 
 ### Content Tools
 
@@ -237,5 +250,7 @@ npx vitest run tests/unit/agent.test.ts
 
 - Richer table layouts and style strategies
 - More stable context continuation and multi-turn task orchestration
-- Finer control for paragraphs, numbering, headers and footers
+- Footnotes and endnotes support
+- Document properties (metadata)
+- Page setup (margins, paper size, orientation)
 - Better regression testing and sample document collection
