@@ -1,10 +1,30 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createConfiguredAgent, createDefaultToolRegistry } from '../../src/application/cli/agentFactory.js';
+import { createConfiguredAgent, createDefaultToolRegistry, createFullToolRegistry } from '../../src/application/cli/agentFactory.js';
 import { ConfigManager } from '../../src/infrastructure/config/ConfigManager.js';
 
 describe('createDefaultToolRegistry', () => {
-	it('registers the expected core tool set', () => {
-		const registry = createDefaultToolRegistry();
+	it('registers tools dynamically based on user input', () => {
+		// 测试空输入 - 只加载核心工具 + document
+		const registry1 = createDefaultToolRegistry({ userInput: '' });
+		const names1 = registry1.getAllDescriptions().map(tool => tool.name).sort();
+		expect(names1).toContain('get_document_info');
+		expect(names1).toContain('list_available_documents');
+
+		// 测试图片相关输入 - 加载图片工具
+		const registry2 = createDefaultToolRegistry({ userInput: '添加图片' });
+		const names2 = registry2.getAllDescriptions().map(tool => tool.name).sort();
+		expect(names2).toContain('add_image');
+		expect(names2).toContain('list_images');
+
+		// 测试目录相关输入 - 加载目录工具
+		const registry3 = createDefaultToolRegistry({ userInput: '生成目录' });
+		const names3 = registry3.getAllDescriptions().map(tool => tool.name).sort();
+		expect(names3).toContain('generate_toc');
+		expect(names3).toContain('update_toc');
+	});
+
+	it('createFullToolRegistry registers all tools', () => {
+		const registry = createFullToolRegistry();
 		const names = registry.getAllDescriptions().map(tool => tool.name).sort();
 
 		expect(names).toEqual([

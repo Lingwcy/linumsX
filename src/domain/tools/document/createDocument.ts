@@ -11,7 +11,7 @@ interface CreateDocumentParams {
 
 export const createDocumentTool: Tool = {
   name: 'create_document',
-  description: '创建新的 Word 文档，仅用于新文件路径',
+  description: '创建新的空白 Word 文档（.docx格式）。当用户要求"新建文档"、"创建文档"时使用此工具。注意：路径必须以 .docx 结尾',
   schema: {
     type: 'object',
     properties: {

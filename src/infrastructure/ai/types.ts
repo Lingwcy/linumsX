@@ -44,4 +44,8 @@ export interface CompleteParams {
 export interface CompleteResponse {
   content: Array<TextContentBlock | Partial<ToolUseContentBlock> & { type: 'tool_use' }>;
   stop_reason: 'end_turn' | 'max_tokens' | 'tool_use' | null;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+  };
 }

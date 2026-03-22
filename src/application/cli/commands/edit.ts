@@ -12,7 +12,8 @@ export const editCommand = new Command('edit')
       console.log(`Loading document: ${document}`);
       console.log(`Instruction: ${instruction}`);
 
-      const agent = createConfiguredAgent();
+      // 传递用户指令用于意图识别，动态加载相关工具
+      const agent = createConfiguredAgent({ userInput: instruction });
 
       await agent.loadDocument(document);
       const result = await agent.run(instruction);

@@ -1,11 +1,12 @@
 // src/application/cli/components/InteractiveApp.tsx
 // Interactive CLI with activity states and expandable tool details
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, Box, Spacer, Static, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import Spinner from 'ink-spinner';
 import { Agent } from '../../../domain/agent/Agent.js';
 import { AgentRunState, AgentToolEvent } from '../../../domain/agent/types.js';
+import { TokenUsage } from './TokenUsage.js';
 
 interface Message {
 	role: 'user' | 'assistant' | 'system';
@@ -49,6 +50,22 @@ export const InteractiveApp: React.FC<Props> = ({ agent }) => {
 	});
 	const [toolActivity, setToolActivity] = useState<ToolActivity | null>(null);
 	const [historyVersion, setHistoryVersion] = useState(0);
+	const [tokenUsage, setTokenUsage] = useState({ inputTokens: 0, outputTokens: 0 });
+
+	// Poll token usage periodically
+	useEffect(() => {
+		if (status.state === 'idle') {
+			setTokenUsage(agent.getTokenUsage());
+		}
+
+		const interval = setInterval(() => {
+			if (status.state !== 'idle') {
+				setTokenUsage(agent.getTokenUsage());
+			}
+		}, 2000);
+
+		return () => clearInterval(interval);
+	}, [status.state, agent]);
 
 	useInput((value, key) => {
 		if (key.ctrl && value === 'b') {
@@ -228,6 +245,19 @@ export const InteractiveApp: React.FC<Props> = ({ agent }) => {
 
 	return (
 		<Box flexDirection="column">
+			{/* Header: Token Usage & Document */}
+			<Box paddingX={1} paddingY={0} justifyContent="space-between">
+				<Box>
+					{currentDoc && (
+						<Text dimColor>Document: {currentDoc}</Text>
+					)}
+				</Box>
+				<TokenUsage
+					inputTokens={tokenUsage.inputTokens}
+					outputTokens={tokenUsage.outputTokens}
+				/>
+			</Box>
+
 			{/* Messages */}
 			<Box key={historyVersion} flexDirection="column">
 				<Static items={messages}>
@@ -238,12 +268,6 @@ export const InteractiveApp: React.FC<Props> = ({ agent }) => {
 			</Box>
 
 			<Spacer />
-
-			{currentDoc && (
-				<Box paddingX={1}>
-					<Text dimColor>Document: {currentDoc}</Text>
-				</Box>
-			)}
 
 			{showToolPanel && (
 				<Box paddingX={1} marginTop={1}>

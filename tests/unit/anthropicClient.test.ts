@@ -10,6 +10,7 @@ describe('AnthropicClient', () => {
 			.mockResolvedValueOnce({
 				content: [{ type: 'text', text: 'ok' }],
 				stop_reason: 'end_turn',
+				usage: { input_tokens: 100, output_tokens: 50 },
 			});
 
 		(client as any).client = {
@@ -27,6 +28,7 @@ describe('AnthropicClient', () => {
 		expect(create).toHaveBeenCalledTimes(3);
 		expect(response.stop_reason).toBe('end_turn');
 		expect(response.content[0]).toMatchObject({ type: 'text', text: 'ok' });
+		expect(response.usage).toEqual({ inputTokens: 100, outputTokens: 50 });
 	});
 
 	it('fails immediately for non-retriable API errors', async () => {

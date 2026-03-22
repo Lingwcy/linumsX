@@ -41,6 +41,10 @@ export class AnthropicClient implements AIModelClient {
             input: block.input,
           })),
           stop_reason: response.stop_reason as any,
+          usage: {
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens,
+          },
         };
       } catch (error) {
         lastError = error;

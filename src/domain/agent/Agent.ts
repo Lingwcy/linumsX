@@ -9,12 +9,13 @@ import { ConfigManager } from '../../infrastructure/config/ConfigManager.js';
 
 const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工具来读取和编辑 Word 文档。
 
-可用工具：
+可用工具（重要提示：创建新文档必须使用 create_document，不能用 write_file）：
 - bash: 在工作区内执行命令
 - read_file: 读取工作区文件
-- write_file: 写入工作区文件
+- write_file: 写入工作区文件（非 Word 文档）
 - edit_file: 精确替换工作区文件中的文本
 - delete_file: 删除工作区文件或目录
+- create_document: 创建新的空白 Word 文档（.docx格式）。当用户说”新建文档”、”创建文档”、”写一个文档”时，必须使用此工具。路径必须以 .docx 结尾
 - get_document_info: 获取文档基本信息
 - get_document_text: 获取文档完整文本内容
 - get_document_outline: 获取文档大纲（标题结构）
@@ -48,22 +49,23 @@ const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工
 工作流程：
 1. 首先使用工具了解文档内容
 2. 如果任务涉及工作区文件、脚本、配置或命令，优先使用通用 runtime 工具
-3. 根据用户指令决定需要执行的操作
-4. 使用相应工具完成编辑
-5. 返回操作结果
+3. 如果用户说”新建文档”、”创建文档”、”写一个文档”，必须先调用 create_document 创建 .docx 文件，然后用 add_content 或 add_heading 添加内容
+4. 根据用户指令决定需要执行的操作
+5. 使用相应工具完成编辑
+6. 返回操作结果
 
 注意：
 - 在执行任何编辑前，先读取文档内容了解结构
-- 对于“全部、完整、逐项、边界测试、穷举”这类多步骤任务，先在内部列出检查清单，逐项完成后再结束
+- 对于”全部、完整、逐项、边界测试、穷举”这类多步骤任务，先在内部列出检查清单，逐项完成后再结束
 - 如果只完成了部分步骤，不要把阶段性进度当成最终答案，继续执行剩余步骤
 - 每次编辑文档后，都要基于最新结果继续判断下一步，必要时再次读取文档确认修改已经生效
 - 如果用户没有指定文档，提醒用户加载文档
 - 所有修改都会直接保存到原文档
 - 如果用户要求写知识库、教程、说明文、报告、文章、总结等成品内容，即使用户没有明确要求配色和字号，也要默认把结构和排版做完整，不要只写裸文本
 - 默认成品排版规则：文档主标题使用一级标题，并额外设置为加粗、较大字号、醒目颜色；各节标题使用二级标题，并额外设置为加粗、略小于主标题的字号、与主标题协调的颜色；正文保持清晰易读，必要时使用段落格式工具改善可读性
-- 当用户提到“格式规范”“标题规范”“写得美观”“整理成知识库”这类要求时，除了写入内容，还应主动调用格式化工具完成标题和关键结构的美化
+- 当用户提到”格式规范””标题规范””写得美观””整理成知识库”这类要求时，除了写入内容，还应主动调用格式化工具完成标题和关键结构的美化
 - 写入较长结构化内容后，优先检查大纲或关键标题是否已经成型；如果只是添加了 heading 样式但还没有完成视觉格式化，应继续调用格式化工具，不要过早结束
-- 如果用户询问“文档讲了什么”、“总结一下”、“这一章内容”之类的问题，必须先调用工具读取文档，不要只根据已有上下文猜测
+- 如果用户询问”文档讲了什么”、”总结一下”、”这一章内容”之类的问题，必须先调用工具读取文档，不要只根据已有上下文猜测
 - 这是终端 CLI，不要使用 Markdown 格式
 - 不要输出标题、表格、代码块、粗体、斜体、项目符号层级或引用格式
 - 不要使用 emoji
@@ -73,6 +75,10 @@ export class Agent {
   private document: Document | null = null;
   private documentPath: string | null = null;
   private messages: CompleteMessage[] = [];
+  private tokenUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+  };
 
   constructor(
     private toolRegistry: ToolRegistry,
@@ -84,6 +90,17 @@ export class Agent {
       persistConversation: false,
       ...config,
     };
+  }
+
+  getTokenUsage(): { inputTokens: number; outputTokens: number; totalTokens: number } {
+    return {
+      ...this.tokenUsage,
+      totalTokens: this.tokenUsage.inputTokens + this.tokenUsage.outputTokens,
+    };
+  }
+
+  resetTokenUsage(): void {
+    this.tokenUsage = { inputTokens: 0, outputTokens: 0 };
   }
 
   async loadDocument(documentPath: string): Promise<void> {
@@ -165,6 +182,13 @@ export class Agent {
       };
 
       const response = await aiClient.complete(params);
+
+      // Accumulate token usage
+      if (response.usage) {
+        this.tokenUsage.inputTokens += response.usage.inputTokens;
+        this.tokenUsage.outputTokens += response.usage.outputTokens;
+      }
+
       const normalizedResponseContent = normalizeResponseContent(response.content, iterationNumber);
       apiMessages.push({ role: 'assistant', content: toAssistantContentBlocks(normalizedResponseContent) });
       let respondingAnnounced = false;
