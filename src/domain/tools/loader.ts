@@ -116,6 +116,11 @@ export function detectRequiredCategories(userInput: string): Set<ToolCategoryTyp
 	if (matchedCategories.size <= 1) {
 		matchedCategories.add(ToolCategory.DOCUMENT);
 		matchedCategories.add(ToolCategory.RUNTIME); // 也加载 runtime 工具
+		// 交互模式下默认加载常用工具类别
+		matchedCategories.add(ToolCategory.CONTENT);
+		matchedCategories.add(ToolCategory.FORMATTING);
+		matchedCategories.add(ToolCategory.IMAGE);
+		matchedCategories.add(ToolCategory.FORMULA);
 	}
 
 	return matchedCategories;

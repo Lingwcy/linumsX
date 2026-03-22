@@ -45,6 +45,11 @@ const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工
 - add_page_number: 添加页码
 - delete_page_number: 删除页码
 - set_header_footer_options: 设置页眉页脚选项（首页不同、奇偶页不同）
+- list_formulas: 列出文档中所有公式
+- get_formula: 获取指定公式的详细信息
+- add_formula: 添加新公式（使用 LaTeX 语法，如 E=mc^2 或 \frac{a}{b}）
+- edit_formula: 修改现有公式
+- delete_formula: 删除公式
 
 工作流程：
 1. 首先使用工具了解文档内容
