@@ -1,7 +1,7 @@
 import { Tool } from '../types.js';
 import { ensureEditableDocPath, loadDocxXml, saveDocxXml } from '../shared/docxXml.js';
 import { parseOmmlElements, ommlToLatex } from './ommlToLatex.js';
-import { parseOleFormulas } from './listFormulas.js';
+import { parseOleFormulas, FormulaEntry } from './listFormulas.js';
 
 export function getDeleteFormulaTool(): Tool {
 	return {
@@ -121,15 +121,6 @@ export function getDeleteFormulaTool(): Tool {
 			}
 		},
 	};
-}
-
-interface FormulaEntry {
-	index: number;
-	type: 'omml' | 'mathtype';
-	latex: string;
-	paragraphIndex: number;
-	element?: any;
-	olePath?: string;
 }
 
 function getAllFormulas(loaded: ReturnType<typeof loadDocxXml>): FormulaEntry[] {

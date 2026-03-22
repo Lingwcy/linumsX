@@ -2,7 +2,7 @@ import { Tool } from '../types.js';
 import { ensureEditableDocPath, loadDocxXml, saveDocxXml } from '../shared/docxXml.js';
 import { parseOmmlElements, ommlToLatex } from './ommlToLatex.js';
 import { createOmmlWrapper } from './latexToOmml.js';
-import { parseOleFormulas } from './listFormulas.js';
+import { parseOleFormulas, FormulaEntry } from './listFormulas.js';
 
 export function getEditFormulaTool(): Tool {
 	return {
@@ -91,15 +91,6 @@ export function getEditFormulaTool(): Tool {
 			}
 		},
 	};
-}
-
-interface FormulaEntry {
-	index: number;
-	type: 'omml' | 'mathtype';
-	latex: string;
-	paragraphIndex: number;
-	element?: any;
-	olePath?: string;
 }
 
 function getAllFormulas(loaded: ReturnType<typeof loadDocxXml>): FormulaEntry[] {
