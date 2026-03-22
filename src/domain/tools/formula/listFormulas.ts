@@ -129,7 +129,7 @@ export function getListFormulasTool(): Tool {
 /**
  * Parse MathType OLE objects from document
  */
-function parseOleFormulas(loaded: ReturnType<typeof loadDocxXml>): Omit<FormulaEntry, 'index'>[] {
+export function parseOleFormulas(loaded: ReturnType<typeof loadDocxXml>): Omit<FormulaEntry, 'index'>[] {
 	const formulas: Omit<FormulaEntry, 'index'>[] = [];
 
 	// Check for embeddings directory
