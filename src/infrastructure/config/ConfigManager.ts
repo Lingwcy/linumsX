@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { app } from 'electron';
 import { AppConfigSchema, AppConfig } from './schema.js';
 
 function parseEnvFile(content: string): Record<string, string> {
@@ -35,6 +36,16 @@ function parseEnvFile(content: string): Record<string, string> {
 
 export class ConfigManager {
   private static envLoaded = false;
+  private static userConfig: AppConfig | null = null;
+  private static configPath: string | null = null;
+
+  private static getConfigFilePath(): string {
+    if (!this.configPath) {
+      const userDataPath = app.getPath('userData');
+      this.configPath = path.join(userDataPath, 'config.json');
+    }
+    return this.configPath;
+  }
 
   private static loadEnvFiles(): void {
     if (this.envLoaded) {
@@ -67,12 +78,6 @@ export class ConfigManager {
   static fromEnv(): AppConfig {
     this.loadEnvFiles();
 
-    // Validate provider with explicit check before type casting
-    const provider = process.env.MODEL_PROVIDER;
-    if (provider && !['anthropic', 'openai'].includes(provider)) {
-      throw new Error(`Invalid MODEL_PROVIDER: ${provider}. Must be 'anthropic' or 'openai'`);
-    }
-
     // Validate numeric values before parsing
     const maxTokens = process.env.MAX_TOKENS;
     if (maxTokens && isNaN(parseInt(maxTokens, 10))) {
@@ -84,11 +89,12 @@ export class ConfigManager {
       throw new Error(`Invalid TEMPERATURE: ${temperature}. Must be a number.`);
     }
 
+    const provider = process.env.MODEL_PROVIDER || 'anthropic';
     const config: AppConfig = {
       model: {
-        provider: (provider as 'anthropic' | 'openai') || 'anthropic',
+        provider,
         apiKey: process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY,
-        baseUrl: process.env.ANTHROPIC_BASE_URL || process.env.OPENAI_BASE_URL,
+        baseUrl: process.env.ANTHROPIC_BASE_URL || process.env.OPENAI_BASE_URL || (provider === 'minimax' ? 'https://api.minimax.chat' : undefined),
         model: process.env.MODEL_ID || 'claude-3-5-sonnet-20241022',
       },
       agent: {
@@ -99,8 +105,58 @@ export class ConfigManager {
     return AppConfigSchema.parse(config);
   }
 
+  static loadUserConfig(): AppConfig {
+    if (this.userConfig) {
+      return this.userConfig;
+    }
+
+    try {
+      const configPath = this.getConfigFilePath();
+      if (fs.existsSync(configPath)) {
+        const content = fs.readFileSync(configPath, 'utf8');
+        const parsed = JSON.parse(content);
+        this.userConfig = AppConfigSchema.parse(parsed);
+        return this.userConfig;
+      }
+    } catch (error) {
+      console.error('Failed to load user config:', error);
+    }
+
+    return this.getDefault();
+  }
+
+  static saveUserConfig(config: AppConfig): void {
+    try {
+      const normalizedConfig = AppConfigSchema.parse(config);
+      const configPath = this.getConfigFilePath();
+      const dir = path.dirname(configPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(configPath, JSON.stringify(normalizedConfig, null, 2), 'utf8');
+      this.userConfig = normalizedConfig;
+    } catch (error) {
+      console.error('Failed to save user config:', error);
+      throw error;
+    }
+  }
+
   static load(): AppConfig {
-    // Priority: existing process env > .env files > defaults
-    return this.fromEnv();
+    // Priority: user config > env > defaults
+    const userConfig = this.loadUserConfig();
+    const envConfig = this.fromEnv();
+
+    return AppConfigSchema.parse({
+      ...envConfig,
+      ...userConfig,
+      model: {
+        ...envConfig.model,
+        ...userConfig.model,
+      },
+      agent: {
+        ...envConfig.agent,
+        ...userConfig.agent,
+      },
+    });
   }
 }

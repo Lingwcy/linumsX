@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const ModelConfigSchema = z.object({
-  provider: z.enum(['anthropic', 'openai']).default('anthropic'),
+  provider: z.string().default('anthropic'),
   apiKey: z.string().optional(),
   baseUrl: z.string().optional(),
   model: z.string().default('claude-3-5-sonnet-20241022'),

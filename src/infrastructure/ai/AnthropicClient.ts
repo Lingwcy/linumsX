@@ -6,6 +6,9 @@ import { AgentError, ErrorCode } from '../../shared/errors/AgentError.js';
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_BASE_DELAY_MS = 500;
 
+export type StreamCallback = (chunk: string) => void;
+export type StreamDoneCallback = (final: string) => void;
+
 export class AnthropicClient implements AIModelClient {
   private client: Anthropic;
 
@@ -14,6 +17,86 @@ export class AnthropicClient implements AIModelClient {
       apiKey,
       baseURL: baseUrl,
     });
+  }
+
+  /**
+   * Streaming completion - sends chunks via callback as they arrive
+   */
+  async completeStream(
+    params: CompleteParams,
+    onChunk: StreamCallback,
+    onDone?: StreamDoneCallback
+  ): Promise<CompleteResponse> {
+    let lastError: unknown;
+    let attempts = 0;
+
+    for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt += 1) {
+      attempts = attempt;
+      try {
+        const response = await this.client.messages.create({
+          model: params.model,
+          system: params.system,
+          messages: params.messages as any,
+          temperature: params.temperature,
+          max_tokens: params.maxTokens || 4096,
+          tools: params.tools as any,
+          stream: true,
+        });
+
+        let fullContent = '';
+        let stopReason: string | null = null;
+        let inputTokens = 0;
+        let outputTokens = 0;
+
+        // Process streaming response
+        for await (const event of response) {
+          if (event.type === 'content_block_delta') {
+            if (event.delta.type === 'text_delta') {
+              const text = event.delta.text;
+              fullContent += text;
+              onChunk(text);
+            }
+          } else if (event.type === 'message_stop') {
+            // For message_stop event, usage is in the final message
+            stopReason = (event as any).stop_reason ?? null;
+          } else if (event.type === 'message_delta') {
+            // message_delta has usage info
+            const delta = event as any;
+            if (delta.usage) {
+              outputTokens = delta.usage.output_tokens ?? 0;
+            }
+          }
+        }
+
+        if (onDone) {
+          onDone(fullContent);
+        }
+
+        return {
+          content: [{ type: 'text', text: fullContent }],
+          stop_reason: stopReason as any,
+          usage: {
+            inputTokens,
+            outputTokens,
+          },
+        };
+      } catch (error) {
+        lastError = error;
+
+        if (!shouldRetry(error) || attempt === MAX_RETRY_ATTEMPTS) {
+          break;
+        }
+
+        await delay(RETRY_BASE_DELAY_MS * attempt);
+      }
+    }
+
+    throw new AgentError(
+      `AI API error: ${formatApiError(lastError)}${buildRetrySuffix(lastError, attempts)}`,
+      ErrorCode.AI_API_ERROR,
+      {},
+      lastError instanceof Error ? lastError : undefined
+    );
   }
 
   async complete(params: CompleteParams): Promise<CompleteResponse> {

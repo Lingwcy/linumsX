@@ -9,7 +9,11 @@
       "Bash(npx vitest:*)",
       "Bash(git:*)",
       "Bash(npm run:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebSearch",
+      "WebFetch(domain:www.electronjs.org)",
+      "WebFetch(domain:tauri.app)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

@@ -203,7 +203,7 @@ export function parseOleFormulas(loaded: ReturnType<typeof loadDocxXml>): Omit<F
  * Parse image-based formulas
  * Many documents store formulas as images
  */
-function parseImageFormulas(loaded: ReturnType<typeof loadDocxXml>): Omit<FormulaEntry, 'index'>[] {
+export function parseImageFormulas(loaded: ReturnType<typeof loadDocxXml>): Omit<FormulaEntry, 'index'>[] {
 	const formulas: Omit<FormulaEntry, 'index'>[] = [];
 
 	// Get all drawings (images) in the document
@@ -280,7 +280,7 @@ function parseImageFormulas(loaded: ReturnType<typeof loadDocxXml>): Omit<Formul
  * Parse Unicode math symbols in the document
  * These are plain text math symbols like ∑, ∫, √, etc.
  */
-function parseUnicodeMath(loaded: ReturnType<typeof loadDocxXml>): Omit<FormulaEntry, 'index'>[] {
+export function parseUnicodeMath(loaded: ReturnType<typeof loadDocxXml>): Omit<FormulaEntry, 'index'>[] {
 	const formulas: Omit<FormulaEntry, 'index'>[] = [];
 
 	// Unicode math symbols

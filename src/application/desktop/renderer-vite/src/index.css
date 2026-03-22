@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Document paragraph styles */
+.paragraph {
+  @apply px-4 py-2 cursor-pointer hover:bg-muted/50 transition-colors;
+}
+
+.paragraph.selected {
+  @apply bg-primary/10 border-l-4 border-primary;
+}
+
+.paragraph.formula {
+  @apply bg-amber-50;
+}
+
+.paragraph.formula.selected {
+  @apply bg-amber-100;
+}
+
+/* Document heading styles */
+.heading1 {
+  @apply text-2xl font-bold mt-4 mb-2;
+}
+
+.heading2 {
+  @apply text-xl font-semibold mt-3 mb-2;
+}
+
+.heading3 {
+  @apply text-lg font-medium mt-2 mb-1;
+}
+
+/* Custom title bar button styles */
+.title-bar-button {
+  @apply w-10 h-10 flex items-center justify-center transition-colors;
+}
+
+.title-bar-button:hover {
+  @apply bg-slate-700;
+}
+
+.title-bar-button.close:hover {
+  @apply bg-red-600;
+}
+
+/* Remove default button styles in title bar */
+.title-bar-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+}
+
+.title-bar-button:focus {
+  outline: none;
+}
+
+/* Docx Viewer styles - Office Reading Mode */
+.docx-viewer {
+  @apply w-full h-full overflow-auto bg-white;
+}
+
+.docx-preview {
+  @apply p-8 max-w-4xl mx-auto;
+  font-family: 'Calibri', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #333;
+}
+
+/* Office-like paragraph spacing */
+.docx-preview p {
+  margin-bottom: 8pt;
+}
+
+/* Tables */
+.docx-preview table {
+  @apply border-collapse w-full my-4;
+}
+
+.docx-preview td,
+.docx-preview th {
+  @apply border p-2;
+}
+
+.docx-preview th {
+  @apply bg-gray-100 font-semibold;
+}
+
+/* Images */
+.docx-preview img {
+  @apply max-w-full h-auto my-4;
+}
+
+/* Headings */
+.docx-preview h1 {
+  @apply text-2xl font-bold mt-6 mb-4;
+}
+
+.docx-preview h2 {
+  @apply text-xl font-semibold mt-5 mb-3;
+}
+
+.docx-preview h3 {
+  @apply text-lg font-medium mt-4 mb-2;
+}
+
+/* Selection highlight */
+.docx-preview ::selection {
+  @apply bg-blue-200;
+}
+
+/* Page breaks */
+.docx-preview .page-break {
+  @apply border-t border-gray-300 my-8;
+}

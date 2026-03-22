@@ -10,7 +10,13 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:renderer-vite": "cd src/application/desktop/renderer-vite && npm run build",
+    "build:desktop": "tsc -p tsconfig.desktop.json && tsc -p src/application/desktop/preload-tsconfig.json && npm run build:renderer-vite && node -e \"const fs=require('fs');const p=require('path');function c(s,d){fs.mkdirSync(d,{recursive:true});fs.readdirSync(s).forEach(f=>{const s0=p.join(s,f),d0=p.join(d,f);fs.statSync(s0).isDirectory()?c(s0,d0):fs.copyFileSync(s0,d0)})};c('src/application/desktop/renderer','dist/application/desktop/renderer');c('src/application/desktop/renderer-vite/dist','dist/application/desktop/renderer-vite')\" && node -e \"const fs=require('fs');const p=require('path');const src='dist/application/desktop/application/desktop/preload.js';const dst='dist/application/desktop/application/desktop/preload.cjs';fs.renameSync(src,dst)\"",
     "start": "tsc && node ./dist/application/cli/index.js ink",
+    "start:desktop": "npm run build:desktop && electron dist/application/desktop/application/desktop/main.js",
+    "pack:desktop": "npm run build:desktop && electron-builder --dir",
+    "dist:desktop": "npm run build:desktop && electron-builder",
+    "dev:renderer-vite": "cd src/application/desktop/renderer-vite && npm run dev",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts",
@@ -22,6 +28,8 @@
     "adm-zip": "^0.5.16",
     "commander": "^12.0.0",
     "docx": "^8.5.0",
+    "docx-preview": "^0.1.15",
+    "electron-log": "^5.1.1",
     "ink": "^6.8.0",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
@@ -36,9 +44,35 @@
     "@types/react": "^19.2.14",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.0",
     "eslint": "^8.56.0",
     "prettier": "^3.2.0",
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"
+  },
+  "build": {
+    "appId": "com.linumsx.agent-doc",
+    "productName": "linumsX",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
