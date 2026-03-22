@@ -157,7 +157,7 @@ function parseLatex(latex: string): MathNode {
 	if (overlineMatch) {
 		return {
 			type: 'overline',
-			content: parseLatex(overlineMatch[1]),
+			content: overlineMatch[1],
 		};
 	}
 
@@ -166,7 +166,7 @@ function parseLatex(latex: string): MathNode {
 	if (underlineMatch) {
 		return {
 			type: 'underline',
-			content: parseLatex(underlineMatch[1]),
+			content: underlineMatch[1],
 		};
 	}
 
@@ -175,7 +175,7 @@ function parseLatex(latex: string): MathNode {
 	if (vecMatch) {
 		return {
 			type: 'vector',
-			content: parseLatex(vecMatch[1]),
+			content: vecMatch[1],
 		};
 	}
 
@@ -184,7 +184,7 @@ function parseLatex(latex: string): MathNode {
 	if (boxedMatch) {
 		return {
 			type: 'boxed',
-			content: parseLatex(boxedMatch[1]),
+			content: boxedMatch[1],
 		};
 	}
 
@@ -326,12 +326,12 @@ function buildFunction(node: MathNode): string {
 }
 
 function buildAccent(node: MathNode, accentType: string): string {
-	const e = node.content ? buildOmmlElement(node.content) : '';
+	const e = node.content ? buildRun(node.content) : '';
 	return `<m:${accentType}><m:e>${e}</m:e></m:${accentType}>`;
 }
 
 function buildBox(node: MathNode): string {
-	const e = node.content ? buildOmmlElement(node.content) : '';
+	const e = node.content ? buildRun(node.content) : '';
 	return `<m:box><m:e>${e}</m:e></m:box>`;
 }
 
