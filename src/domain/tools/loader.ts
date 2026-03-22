@@ -18,6 +18,8 @@ export const ToolCategory = {
 	NUMBERING: 'numbering',
 	// 页眉页脚
 	HEADER_FOOTER: 'headerFooter',
+	// 公式
+	FORMULA: 'formula',
 	// 运行时
 	RUNTIME: 'runtime',
 } as const;
@@ -67,6 +69,12 @@ const categoryKeywords: Record<ToolCategoryType, string[]> = {
 		'header', '页眉', 'footer', '页脚',
 		'page number', '页码', 'pagination',
 		'add', 'delete', 'remove', 'set', '设置',
+	],
+	[ToolCategory.FORMULA]: [
+		'formula', '公式', 'equation', '数学', 'math',
+		'latex', 'omml',
+		'add', 'edit', 'delete', 'remove', 'get', 'list', '查询', '列出',
+		'添加公式', '删除公式', '修改公式', '查询公式',
 	],
 	[ToolCategory.RUNTIME]: [
 		'file', '文件', 'read', 'write', 'read file', 'write file',
@@ -123,6 +131,7 @@ const categoryToolLoaders: Record<ToolCategoryType, ToolLoader[]> = {
 	[ToolCategory.TOC]: [],
 	[ToolCategory.NUMBERING]: [],
 	[ToolCategory.HEADER_FOOTER]: [],
+	[ToolCategory.FORMULA]: [],
 	[ToolCategory.RUNTIME]: [],
 };
 
@@ -149,6 +158,7 @@ export function loadToolsForCategories(categories: Set<ToolCategoryType>): Tool[
 		ToolCategory.TOC,
 		ToolCategory.NUMBERING,
 		ToolCategory.HEADER_FOOTER,
+		ToolCategory.FORMULA,
 		ToolCategory.RUNTIME,
 	];
 
