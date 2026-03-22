@@ -308,21 +308,22 @@ export const InteractiveApp: React.FC<Props> = ({ agent }) => {
 };
 
 function buildToolDetailsMessage(toolActivity: ToolActivity): string {
-	const inputPreview = formatDetailValue(toolActivity.input);
-	const resultPreview = toolActivity.result === undefined ? 'No result yet.' : formatDetailValue(toolActivity.result);
+	// Simplified: just show one-line summary
+	const result = toolActivity.result as { success?: boolean; data?: { path?: string; bytesWritten?: number }; error?: string } | undefined;
 
-	return [
-		`Tool details: ${toolActivity.name}`,
-		toolActivity.summary,
-		'',
-		'Input:',
-		inputPreview,
-		'',
-		toolActivity.success === false ? 'Error:' : 'Result:',
-		resultPreview,
-		'',
-		'Details are truncated to keep the terminal responsive.',
-	].join('\n');
+	let status = '';
+	if (toolActivity.success === false) {
+		status = `❌ Error: ${result?.error || 'Unknown error'}`;
+	} else if (result?.data?.path) {
+		const bytes = result.data.bytesWritten ? ` (${(result.data.bytesWritten / 1024).toFixed(1)}KB)` : '';
+		status = `✅ ${result.data.path}${bytes}`;
+	} else {
+		// Show brief result for other tools
+		const dataStr = JSON.stringify(result?.data || result);
+		status = dataStr.length > 100 ? dataStr.substring(0, 97) + '...' : dataStr;
+	}
+
+	return `#Tool ${toolActivity.success === false ? 'failed' : 'success'} ${toolActivity.name}\n${status}`;
 }
 
 function formatDetailValue(value: unknown): string {
