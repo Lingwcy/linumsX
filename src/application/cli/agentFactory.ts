@@ -45,6 +45,9 @@ import {
 	getSetHeaderFooterOptionsTool,
 } from '../../domain/tools/headerFooter/index.js';
 
+// 公式类工具
+import { getListFormulasTool, getGetFormulaTool, getAddFormulaTool, getEditFormulaTool, getDeleteFormulaTool } from '../../domain/tools/formula/index.js';
+
 import { ConfigManager } from '../../infrastructure/config/ConfigManager.js';
 
 interface CreateAgentOptions {
@@ -120,6 +123,13 @@ function initializeToolLoaders(): void {
 	registerToolForCategory(ToolCategory.HEADER_FOOTER, () => getAddPageNumberTool());
 	registerToolForCategory(ToolCategory.HEADER_FOOTER, () => getDeletePageNumberTool());
 	registerToolForCategory(ToolCategory.HEADER_FOOTER, () => getSetHeaderFooterOptionsTool());
+
+	// 公式类工具
+	registerToolForCategory(ToolCategory.FORMULA, () => getListFormulasTool());
+	registerToolForCategory(ToolCategory.FORMULA, () => getGetFormulaTool());
+	registerToolForCategory(ToolCategory.FORMULA, () => getAddFormulaTool());
+	registerToolForCategory(ToolCategory.FORMULA, () => getEditFormulaTool());
+	registerToolForCategory(ToolCategory.FORMULA, () => getDeleteFormulaTool());
 }
 
 // 标记是否已初始化
