@@ -43,24 +43,70 @@ export class AnthropicClient implements AIModelClient {
           stream: true,
         });
 
-        let fullContent = '';
+        let fullContent: any[] = [];
+        let currentBlock: { type: string; text?: string; id?: string; name?: string; input?: object } | null = null;
         let stopReason: string | null = null;
         let inputTokens = 0;
         let outputTokens = 0;
 
         // Process streaming response
         for await (const event of response) {
-          if (event.type === 'content_block_delta') {
-            if (event.delta.type === 'text_delta') {
+          if (event.type === 'content_block_start') {
+            const block = event.content_block;
+            if (block.type === 'tool_use') {
+              currentBlock = { type: 'tool_use', id: block.id, name: block.name, input: {} };
+            } else if (block.type === 'text') {
+              currentBlock = { type: 'text', text: '' };
+            }
+          } else if (event.type === 'content_block_delta') {
+            if (event.delta.type === 'text_delta' && currentBlock?.type === 'text') {
               const text = event.delta.text;
-              fullContent += text;
+              currentBlock.text = (currentBlock.text || '') + text;
               onChunk(text);
+            } else if (event.delta.type === 'input_json_delta' && currentBlock?.type === 'tool_use') {
+              // Accumulate tool use input
+              const inputDelta = event.delta.partial_json;
+              try {
+                const partialInput = JSON.parse(inputDelta);
+                currentBlock.input = { ...currentBlock.input, ...partialInput };
+              } catch {
+                // Incomplete JSON, continue accumulating
+                const existingInput = currentBlock.input as Record<string, any> || {};
+                try {
+                  // Try to merge partial JSON
+                  Object.assign(existingInput, JSON.parse('{' + inputDelta + '}'));
+                } catch {
+                  // Store raw for now
+                  (currentBlock as any)._rawInput = ((currentBlock as any)._rawInput || '') + inputDelta;
+                }
+              }
+            }
+          } else if (event.type === 'content_block_stop') {
+            if (currentBlock) {
+              if (currentBlock.type === 'text' && currentBlock.text) {
+                fullContent.push({ type: 'text', text: currentBlock.text });
+              } else if (currentBlock.type === 'tool_use' && currentBlock.id && currentBlock.name) {
+                // Handle raw input if any
+                let input = currentBlock.input as Record<string, any>;
+                if ((currentBlock as any)._rawInput) {
+                  try {
+                    input = JSON.parse('{' + (currentBlock as any)._rawInput + '}');
+                  } catch {
+                    input = {};
+                  }
+                }
+                fullContent.push({
+                  type: 'tool_use',
+                  id: currentBlock.id,
+                  name: currentBlock.name,
+                  input: input || {}
+                });
+              }
+              currentBlock = null;
             }
           } else if (event.type === 'message_stop') {
-            // For message_stop event, usage is in the final message
             stopReason = (event as any).stop_reason ?? null;
           } else if (event.type === 'message_delta') {
-            // message_delta has usage info
             const delta = event as any;
             if (delta.usage) {
               outputTokens = delta.usage.output_tokens ?? 0;
@@ -69,11 +115,11 @@ export class AnthropicClient implements AIModelClient {
         }
 
         if (onDone) {
-          onDone(fullContent);
+          onDone('');
         }
 
         return {
-          content: [{ type: 'text', text: fullContent }],
+          content: fullContent.length > 0 ? fullContent : [{ type: 'text', text: '' }],
           stop_reason: stopReason as any,
           usage: {
             inputTokens,
