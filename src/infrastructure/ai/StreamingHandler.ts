@@ -39,8 +39,10 @@ export class StreamingHandler {
   ): Promise<string> {
     log.info('[StreamingHandler] Starting streaming for instruction:', instruction.slice(0, 50));
 
-    // Map to store tool call IDs for correlation
-    const toolCallIds = new Map<string, string>();
+    // Counter for sequential tool call IDs (avoids collision when same tool is called multiple times)
+    let toolCallCounter = 0;
+    // Array to store tool call IDs in order (tools run sequentially)
+    const toolCallIds: string[] = [];
 
     try {
       // Run agent with hooks to capture events and forward to SSEWriter
@@ -59,8 +61,8 @@ export class StreamingHandler {
           hooks.onAnswer?.(text);
         },
         onToolStart: (event) => {
-          const toolCallId = event.name + '-' + Date.now();
-          toolCallIds.set(event.name, toolCallId);
+          const toolCallId = `tool-${++toolCallCounter}`;
+          toolCallIds.push(toolCallId);
 
           log.info('[StreamingHandler] Tool start:', event.name);
           // Forward tool call event
@@ -76,8 +78,8 @@ export class StreamingHandler {
           });
         },
         onToolResult: (event) => {
-          // Get the stored ID or generate new one if not found
-          const toolCallId = toolCallIds.get(event.name) || event.name + '-' + Date.now();
+          // Since tools run sequentially, pop the last ID from the array
+          const toolCallId = toolCallIds.pop() || event.name + '-' + Date.now();
 
           log.info('[StreamingHandler] Tool result:', event.name, event.success);
           // Forward tool result event
