@@ -18,6 +18,8 @@ import { ConfigManager } from '../../infrastructure/config/ConfigManager.js';
 import { loadDocxXml } from '../../domain/tools/shared/docxXml.js';
 import { parseOleFormulas, parseImageFormulas, parseUnicodeMath } from '../../domain/tools/formula/listFormulas.js';
 import { parseOmmlElements, ommlToLatex } from '../../domain/tools/formula/ommlToLatex.js';
+import { SSEWriter } from '../../infrastructure/ai/SSEWriter.js';
+import { StreamingHandler } from '../../infrastructure/ai/StreamingHandler.js';
 
 // Configure logging
 log.transports.file.level = 'info';
@@ -361,52 +363,29 @@ ipcMain.handle('ai:chat', async (_event, message: string) => {
       await currentAgent.loadDocument(currentDocument.path);
     }
 
+    // Create SSE writer and streaming handler
+    const sseWriter = new SSEWriter(mainWindow);
+    const streamingHandler = new StreamingHandler(sseWriter);
+
     // Send start event
     if (mainWindow) {
       mainWindow.webContents.send('ai:chunk', { type: 'start', content: '' });
     }
 
-    // Run agent with streaming hooks
-    const result = await currentAgent.run(message, {
-      onText: (text: string) => {
-        // Send text chunk to renderer
-        if (mainWindow) {
-          mainWindow.webContents.send('ai:chunk', { type: 'chunk', content: text });
-        }
+    // Run with streaming
+    const result = await streamingHandler.runWithStreaming(currentAgent, message, {
+      onAnswer: (text: string) => {
+        // Text is already sent via SSE writer
       },
-      onStateChange: (update) => {
-        log.info('Agent state:', update.state, update.summary);
-        // Send state change to renderer
-        if (mainWindow) {
-          mainWindow.webContents.send('ai:chunk', {
-            type: 'state',
-            content: JSON.stringify({ state: update.state, summary: update.summary, iteration: update.iteration })
-          });
-        }
+      onComplete: () => {
+        // Already sent via SSE writer
       },
-      onToolStart: (event) => {
-        log.info('Tool start:', event.name, event.summary);
-        // Send tool start to renderer
-        if (mainWindow) {
-          mainWindow.webContents.send('ai:chunk', {
-            type: 'tool_start',
-            content: JSON.stringify({ name: event.name, summary: event.summary, input: event.input })
-          });
-        }
-      },
-      onToolResult: (event) => {
-        log.info('Tool result:', event.name, event.success);
-        // Send tool result to renderer
-        if (mainWindow) {
-          mainWindow.webContents.send('ai:chunk', {
-            type: 'tool_result',
-            content: JSON.stringify({ name: event.name, summary: event.summary, success: event.success, result: event.result })
-          });
-        }
+      onError: (error: string) => {
+        // Already sent via SSE writer
       },
     });
 
-    // Send done event
+    // Send done event (for compatibility)
     if (mainWindow) {
       mainWindow.webContents.send('ai:chunk', { type: 'done', content: result });
     }
