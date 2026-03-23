@@ -424,9 +424,9 @@ function App() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Custom Title Bar */}
           <header
             className="h-12 border-b flex items-center justify-between px-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white"
