@@ -1,6 +1,6 @@
 // src/domain/agent/types.ts
 import { ToolDescription } from '../tools/types.js';
-import { AIModelClient } from '../../infrastructure/ai/types.js';
+import { AIModelClient, StreamCallback } from '../../infrastructure/ai/types.js';
 
 export interface AgentConfig {
   maxIterations?: number;
@@ -8,6 +8,7 @@ export interface AgentConfig {
   maxTokens?: number;
   aiClient?: AIModelClient;
   persistConversation?: boolean;
+  onChunk?: StreamCallback;
 }
 
 export type AgentRunState = 'idle' | 'thinking' | 'tool_use' | 'responding';

@@ -1,6 +1,14 @@
 // src/infrastructure/ai/types.ts
+export type StreamCallback = (text: string) => void;
+export type StreamDoneCallback = (fullContent: string) => void;
+
 export interface AIModelClient {
   complete(params: CompleteParams): Promise<CompleteResponse>;
+  completeStream(
+    params: CompleteParams,
+    onChunk: StreamCallback,
+    onDone?: StreamDoneCallback
+  ): Promise<CompleteResponse>;
 }
 
 export interface TextContentBlock {

@@ -45,8 +45,8 @@ export class StreamingHandler {
     const toolCallIds: string[] = [];
 
     try {
-      // Run agent with hooks to capture events and forward to SSEWriter
-      const result = await agent.run(instruction, {
+      // Run agent with streaming support for real-time event streaming
+      const result = await agent.runStream(instruction, {
         onStateChange: (update) => {
           log.info('[StreamingHandler] State:', update.state, update.summary);
           // Forward thinking state

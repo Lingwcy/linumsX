@@ -4,7 +4,7 @@ import { ToolRegistry } from '../tools/registry.js';
 import { Document } from '../document/entities/Document.js';
 import { AgentContextBuilder } from './context.js';
 import { AgentConfig, AgentMessage, AgentRunHooks } from './types.js';
-import { CompleteMessage, CompleteParams, MessageContentBlock, ToolResultContentBlock, ToolUseContentBlock } from '../../infrastructure/ai/types.js';
+import { AIModelClient, CompleteMessage, CompleteParams, MessageContentBlock, ToolResultContentBlock, ToolUseContentBlock } from '../../infrastructure/ai/types.js';
 import { ConfigManager } from '../../infrastructure/config/ConfigManager.js';
 
 const SYSTEM_PROMPT = `你是一个智能文档编辑助手。你可以使用工具来读取和编辑 Word 文档。
@@ -317,6 +317,240 @@ export class Agent {
       }
 
       // Check if done
+      if (response.stop_reason === 'end_turn') {
+        const autoContinueDecision = getAutoContinueDecision({
+          instruction,
+          iterationText,
+          toolCallsObserved,
+        });
+
+        if (autoContinueDecision.shouldContinue) {
+          const continueMessage = buildContinueMessage();
+          apiMessages.push({ role: 'user' as const, content: continueMessage });
+          hooks.onStateChange?.({
+            state: 'thinking',
+            summary: 'Previous reply was only progress update; continuing remaining steps automatically',
+            iteration: iterationNumber,
+          });
+          continue;
+        }
+
+        completed = true;
+        break;
+      }
+    }
+
+    if (!completed && maxIterations !== undefined && iterationNumber >= maxIterations) {
+      exhaustedIterationBudget = true;
+    }
+
+    hooks.onStateChange?.({ state: 'idle', summary: 'Ready' });
+
+    if (this.config.persistConversation) {
+      this.messages = apiMessages;
+    }
+
+    if (!completed) {
+      const incompleteNotice = exhaustedIterationBudget
+        ? '任务达到配置的代理迭代上限，结果可能不完整。你可以直接让我继续剩余测试，或者把 maxIterations 设得更大。'
+        : '任务未明确结束，结果可能不完整。你可以直接让我继续剩余测试。';
+      return result ? `${result}\n\n${incompleteNotice}` : incompleteNotice;
+    }
+
+    return result || '处理完成';
+  }
+
+  /**
+   * Run agent with streaming support - uses completeStream for real-time streaming
+   */
+  async runStream(instruction: string, hooks: AgentRunHooks = {}): Promise<string> {
+    const config = ConfigManager.load();
+    const aiClient = await this.resolveAiClient(config);
+
+    const contextBuilder = new AgentContextBuilder(
+      this.documentPath || '',
+      this.document,
+      this.toolRegistry
+    );
+    const context = contextBuilder.build();
+
+    const workingMessages: CompleteMessage[] = this.config.persistConversation ? [...this.messages] : [];
+
+    const userContent = this.document
+      ? `${instruction}\n\n[文档信息]\n${context.documentInfo}`
+      : instruction;
+
+    workingMessages.push({ role: 'user', content: userContent });
+
+    const apiMessages = workingMessages;
+    const tools = this.toolRegistry.getAllDescriptions();
+
+    const maxIterations = this.config.maxIterations;
+    let result = '';
+    let completed = false;
+    let exhaustedIterationBudget = false;
+    let toolCallsObserved = 0;
+    let iterationNumber = 0;
+
+    // Accumulated content for tool calls
+    let accumulatedText = '';
+    let toolCallChunks: Map<number, { id?: string; function?: { name?: string; arguments?: string } }> = new Map();
+    let currentToolCallIndex = 0;
+
+    while (maxIterations === undefined || iterationNumber < maxIterations) {
+      iterationNumber += 1;
+      hooks.onStateChange?.({
+        state: 'thinking',
+        summary: iterationNumber === 1 ? 'Analyzing your request and current document context' : 'Reviewing tool results and planning the next step',
+        iteration: iterationNumber,
+      });
+
+      const params: CompleteParams = {
+        system: SYSTEM_PROMPT,
+        messages: apiMessages,
+        model: config.model.model,
+        temperature: this.config.temperature,
+        maxTokens: this.config.maxTokens,
+        tools: tools as any,
+      };
+
+      // Use streaming API
+      const onChunk = (chunk: string) => {
+        accumulatedText += chunk;
+        hooks.onText?.(chunk);
+      };
+
+      let response: Awaited<ReturnType<AIModelClient['completeStream']>> | null = null;
+
+      try {
+        response = await aiClient.completeStream(params, onChunk);
+      } catch (error) {
+        // If streaming fails, try non-streaming
+        response = await aiClient.complete(params);
+      }
+
+      if (response.usage) {
+        this.tokenUsage.inputTokens += response.usage.inputTokens;
+        this.tokenUsage.outputTokens += response.usage.outputTokens;
+      }
+
+      const normalizedResponseContent = normalizeResponseContent(response.content, iterationNumber);
+      apiMessages.push({ role: 'assistant', content: toAssistantContentBlocks(normalizedResponseContent) });
+
+      let respondingAnnounced = false;
+      let handledBlock = false;
+      let iterationText = '';
+      const toolResults: ToolResultContentBlock[] = [];
+
+      for (const block of normalizedResponseContent) {
+        if (block.type === 'text' && block.text) {
+          handledBlock = true;
+          if (!respondingAnnounced) {
+            hooks.onStateChange?.({
+              state: 'responding',
+              summary: 'Composing the final answer',
+              iteration: iterationNumber,
+            });
+            respondingAnnounced = true;
+          }
+
+          iterationText += block.text;
+          result += block.text;
+        } else if (block.type === 'tool_use' && block.name && block.input) {
+          handledBlock = true;
+          toolCallsObserved += 1;
+          const toolName = block.name;
+          const toolInput = block.input;
+          const toolUseId = block.id ?? `toolu:${iterationNumber}:fallback`;
+
+          hooks.onStateChange?.({
+            state: 'tool_use',
+            summary: summarizeToolUse(toolName, toolInput),
+            iteration: iterationNumber,
+          });
+          hooks.onToolStart?.({
+            name: toolName,
+            input: toolInput,
+            summary: summarizeToolUse(toolName, toolInput),
+            iteration: iterationNumber,
+          });
+
+          try {
+            const tool = this.toolRegistry.get(toolName);
+            if (!tool) {
+              const missingToolMsg = `Tool execution error: Tool not found: ${toolName}`;
+              hooks.onToolResult?.({
+                name: toolName,
+                input: toolInput,
+                summary: missingToolMsg,
+                result: missingToolMsg,
+                success: false,
+                iteration: iterationNumber,
+              });
+              toolResults.push({
+                type: 'tool_result',
+                tool_use_id: toolUseId,
+                content: missingToolMsg,
+              });
+              continue;
+            }
+
+            const toolResult = await tool.execute(toolInput);
+            hooks.onToolResult?.({
+              name: toolName,
+              input: toolInput,
+              summary: summarizeToolResult(toolName, toolResult),
+              result: toolResult,
+              success: toolResult.success,
+              iteration: iterationNumber,
+            });
+
+            let resultText = typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult);
+
+            try {
+              const refreshedContext = await this.refreshDocumentContextAfterTool(toolName, toolInput, toolResult);
+              if (refreshedContext) {
+                resultText = `${resultText}\n\n${refreshedContext}`;
+              }
+            } catch (error) {
+              const refreshWarning = `Document refresh warning: ${error instanceof Error ? error.message : String(error)}`;
+              resultText = `${resultText}\n\n${refreshWarning}`;
+            }
+
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: toolUseId,
+              content: resultText,
+            });
+          } catch (error) {
+            const errorMsg = `Tool execution error: ${error instanceof Error ? error.message : String(error)}`;
+            hooks.onToolResult?.({
+              name: toolName,
+              input: toolInput,
+              summary: `Tool failed: ${error instanceof Error ? error.message : String(error)}`,
+              result: errorMsg,
+              success: false,
+              iteration: iterationNumber,
+            });
+            toolResults.push({
+              type: 'tool_result',
+              tool_use_id: toolUseId,
+              content: errorMsg,
+            });
+          }
+        }
+      }
+
+      if (toolResults.length > 0) {
+        apiMessages.push({ role: 'user', content: toolResults });
+      }
+
+      if (!handledBlock) {
+        const errorMsg = 'Agent received an empty response and could not continue the task.';
+        apiMessages.push({ role: 'assistant', content: errorMsg });
+        break;
+      }
+
       if (response.stop_reason === 'end_turn') {
         const autoContinueDecision = getAutoContinueDecision({
           instruction,
