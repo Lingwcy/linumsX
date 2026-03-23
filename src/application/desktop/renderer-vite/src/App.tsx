@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   FileText,
   Settings,
@@ -83,6 +83,9 @@ function App() {
   } | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [sidebarWidth, setSidebarWidth] = useState(320);
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   // Listen for document loaded event
   useEffect(() => {
@@ -194,6 +197,37 @@ function App() {
       window.electronAPI.closeWindow();
     }
   };
+
+  // Sidebar resize handlers
+  const startResize = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const stopResize = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing && sidebarRef.current) {
+      const containerRect = sidebarRef.current.parentElement?.getBoundingClientRect();
+      if (containerRect) {
+        const newWidth = containerRect.right - e.clientX;
+        setSidebarWidth(Math.max(200, Math.min(600, newWidth)));
+      }
+    }
+  }, [isResizing]);
+
+  useEffect(() => {
+    if (isResizing) {
+      window.addEventListener('mousemove', resize);
+      window.addEventListener('mouseup', stopResize);
+    }
+    return () => {
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResize);
+    };
+  }, [isResizing, resize, stopResize]);
 
   const handleOpenDocument = async () => {
     if (typeof window !== 'undefined' && window.electronAPI) {
@@ -495,11 +529,21 @@ function App() {
               )}
             </div>
 
-            {/* Chat Panel */}
+            {/* Chat Panel with Resize Handle */}
             {showChat && (
-              <div className="w-[320px] shrink-0 border-l flex flex-col bg-gradient-to-b from-card to-background">
-                {/* Messages */}
-                <ScrollArea className="flex-1">
+              <>
+                <div
+                  className="w-1 hover:w-1.5 bg-transparent hover:bg-blue-400 cursor-col-resize transition-all shrink-0"
+                  onMouseDown={startResize}
+                  onClick={(e) => e.preventDefault()}
+                />
+                <div
+                  ref={sidebarRef}
+                  style={{ width: sidebarWidth }}
+                  className="shrink-0 border-l flex flex-col bg-gradient-to-b from-card to-background"
+                >
+                  {/* Messages */}
+                  <ScrollArea className="flex-1">
                   <div className="p-3 space-y-3">
                     {chatMessages.length === 0 ? (
                       <div className="text-center text-muted-foreground py-8">
@@ -611,7 +655,8 @@ function App() {
                     </div>
                   )}
                 </div>
-              </div>
+                </div>
+              </>
             )}
           </div>
         </div>
