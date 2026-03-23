@@ -83,6 +83,13 @@ function App() {
   } | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  const [aiPhase, setAiPhase] = useState<'idle' | 'thinking' | 'tool_use' | 'responding'>('idle');
+  const [aiSummary, setAiSummary] = useState('');
+  const [activeTools, setActiveTools] = useState<Array<{
+    name: string;
+    summary: string;
+    status: 'running' | 'completed' | 'failed';
+  }>>([]);
   const [sidebarWidth, setSidebarWidth] = useState(320);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -129,6 +136,9 @@ function App() {
             return newMessages;
           });
           setStreamingContent('');
+          setAiPhase('idle');
+          setAiSummary('');
+          setActiveTools([]);
           setIsLoading(false);
         } else if (data.type === 'error') {
           setChatMessages(prev => [...prev, {
@@ -136,10 +146,50 @@ function App() {
             content: 'Error: ' + data.content
           }]);
           setStreamingContent('');
+          setAiPhase('idle');
+          setAiSummary('');
+          setActiveTools([]);
           setIsLoading(false);
         } else if (data.type === 'start') {
           // Start of streaming, add a placeholder message
           setChatMessages(prev => [...prev, { type: 'ai', content: '' }]);
+          setAiPhase('thinking');
+          setAiSummary('正在思考...');
+        } else if (data.type === 'state') {
+          // State change: thinking, tool_use, responding
+          try {
+            const stateData = JSON.parse(data.content);
+            setAiPhase(stateData.state);
+            setAiSummary(stateData.summary || '');
+          } catch (e) {
+            console.error('Failed to parse state:', e);
+          }
+        } else if (data.type === 'tool_start') {
+          // Tool start event
+          try {
+            const toolData = JSON.parse(data.content);
+            setActiveTools(prev => [...prev, {
+              name: toolData.name,
+              summary: toolData.summary,
+              status: 'running'
+            }]);
+            setAiPhase('tool_use');
+            setAiSummary(`正在执行工具: ${toolData.name}`);
+          } catch (e) {
+            console.error('Failed to parse tool_start:', e);
+          }
+        } else if (data.type === 'tool_result') {
+          // Tool result event
+          try {
+            const toolData = JSON.parse(data.content);
+            setActiveTools(prev => prev.map(t =>
+              t.name === toolData.name
+                ? { ...t, summary: toolData.summary, status: toolData.success ? 'completed' : 'failed' }
+                : t
+            ));
+          } catch (e) {
+            console.error('Failed to parse tool_result:', e);
+          }
         }
       });
 
@@ -585,6 +635,58 @@ function App() {
                     )}
                   </div>
                 </ScrollArea>
+
+                {/* AI Status Panel */}
+                {isLoading && (
+                  <div className="px-3 py-2 border-t bg-blue-50 dark:bg-blue-900/20">
+                    {/* Phase indicator */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {aiPhase === 'thinking' && (
+                        <>
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+                          <span className="text-sm text-yellow-600 dark:text-yellow-400">思考中</span>
+                        </>
+                      )}
+                      {aiPhase === 'tool_use' && (
+                        <>
+                          <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                          <span className="text-sm text-purple-600 dark:text-purple-400">工具调用</span>
+                        </>
+                      )}
+                      {aiPhase === 'responding' && (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                          <span className="text-sm text-green-600 dark:text-green-400">回答中</span>
+                        </>
+                      )}
+                      {aiSummary && (
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {aiSummary}
+                        </span>
+                      )}
+                    </div>
+                    {/* Active tools */}
+                    {activeTools.length > 0 && (
+                      <div className="space-y-1">
+                        {activeTools.map((tool, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-xs">
+                            {tool.status === 'running' && (
+                              <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-spin" style={{ animationDuration: '1s' }} />
+                            )}
+                            {tool.status === 'completed' && (
+                              <span className="text-green-500">✓</span>
+                            )}
+                            {tool.status === 'failed' && (
+                              <span className="text-red-500">✗</span>
+                            )}
+                            <span className="text-gray-600 dark:text-gray-300">{tool.name}</span>
+                            <span className="text-gray-400 dark:text-gray-500 truncate">{tool.summary}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Input Area */}
                 <div className="p-3 border-t">

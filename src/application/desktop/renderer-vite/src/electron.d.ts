@@ -24,6 +24,34 @@ export interface DocumentData {
   }>;
 }
 
+export type AIChunkType =
+  | 'start'       // 开始
+  | 'chunk'        // 文本片段
+  | 'state'        // 状态变化 (thinking, tool_use, responding)
+  | 'tool_start'   // 工具开始
+  | 'tool_result'  // 工具结果
+  | 'done'         // 完成
+  | 'error';       // 错误
+
+export interface AIStateUpdate {
+  state: 'idle' | 'thinking' | 'tool_use' | 'responding';
+  summary: string;
+  iteration?: number;
+}
+
+export interface AIToolEvent {
+  name: string;
+  summary: string;
+  input?: object;
+  success?: boolean;
+  result?: unknown;
+}
+
+export interface AIChunkData {
+  type: AIChunkType;
+  content: string;  // JSON string for state/tool events, text for chunk
+}
+
 export interface ElectronAPI {
   // Document operations
   loadDocument: (filePath: string) => Promise<{ success: boolean }>;
@@ -38,7 +66,7 @@ export interface ElectronAPI {
 
   // AI chat operations
   chat: (message: string) => Promise<{ success: boolean; data?: string; error?: string }>;
-  onAIChunk: (callback: (data: { type: string; content: string }) => void) => () => void;
+  onAIChunk: (callback: (data: AIChunkData) => void) => () => void;
   explain: (text: string, isFormula: boolean) => Promise<{ success: boolean; data?: string; error?: string }>;
   copyAsLatex: (text: string) => Promise<{ success: boolean; data?: string; error?: string }>;
 

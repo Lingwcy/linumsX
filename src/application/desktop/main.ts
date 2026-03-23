@@ -376,6 +376,33 @@ ipcMain.handle('ai:chat', async (_event, message: string) => {
       },
       onStateChange: (update) => {
         log.info('Agent state:', update.state, update.summary);
+        // Send state change to renderer
+        if (mainWindow) {
+          mainWindow.webContents.send('ai:chunk', {
+            type: 'state',
+            content: JSON.stringify({ state: update.state, summary: update.summary, iteration: update.iteration })
+          });
+        }
+      },
+      onToolStart: (event) => {
+        log.info('Tool start:', event.name, event.summary);
+        // Send tool start to renderer
+        if (mainWindow) {
+          mainWindow.webContents.send('ai:chunk', {
+            type: 'tool_start',
+            content: JSON.stringify({ name: event.name, summary: event.summary, input: event.input })
+          });
+        }
+      },
+      onToolResult: (event) => {
+        log.info('Tool result:', event.name, event.success);
+        // Send tool result to renderer
+        if (mainWindow) {
+          mainWindow.webContents.send('ai:chunk', {
+            type: 'tool_result',
+            content: JSON.stringify({ name: event.name, summary: event.summary, success: event.success, result: event.result })
+          });
+        }
       },
     });
 
