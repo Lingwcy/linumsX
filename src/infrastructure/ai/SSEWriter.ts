@@ -31,9 +31,11 @@ export class SSEWriter {
   private send(event: SSEEvent): void {
     if (this.closed || !this.window) return;
     try {
+      // For events with content, send directly; for events without, stringify
+      const content = event.content || JSON.stringify(event);
       this.window.webContents.send('ai:chunk', {
         type: event.type,
-        content: JSON.stringify(event),
+        content,
       });
     } catch {
       this.closed = true;
