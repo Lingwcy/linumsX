@@ -1,7 +1,10 @@
-// src/infrastructure/ai/SSEWriter.ts
+/**
+ * SSEWriter - Handles Server-Sent Events for AI response streaming
+ * Aligns event types with renderer expectations
+ */
 import { BrowserWindow } from 'electron';
 
-export type SSEEventType = 'thinking' | 'answer' | 'tool_call' | 'tool_result' | 'tool_progress' | 'complete' | 'error';
+export type SSEEventType = 'state' | 'chunk' | 'tool_start' | 'tool_result' | 'tool_progress' | 'done' | 'error';
 
 export interface SSEEvent {
   type: SSEEventType;
@@ -43,15 +46,19 @@ export class SSEWriter {
   }
 
   sendThinking(content: string): void {
-    this.send({ type: 'thinking', content });
+    // Renderer expects: { type: 'state', content: JSON.stringify({ state: 'thinking', summary: '...' }) }
+    const stateContent = JSON.stringify({ state: 'thinking', summary: content });
+    this.send({ type: 'state', content: stateContent });
   }
 
   sendAnswer(content: string): void {
-    this.send({ type: 'answer', content });
+    this.send({ type: 'chunk', content });
   }
 
   sendToolCall(toolCallId: string, name: string, arguments_: Record<string, unknown>): void {
-    this.send({ type: 'tool_call', toolCallId, name, arguments: arguments_ });
+    // Renderer expects: { type: 'tool_start', content: JSON.stringify({ name, summary, input }) }
+    const content = JSON.stringify({ name, summary: `Running ${name}`, input: arguments_ });
+    this.send({ type: 'tool_start', content });
   }
 
   sendToolProgress(toolCallId: string, progress: number): void {
@@ -63,7 +70,7 @@ export class SSEWriter {
   }
 
   sendComplete(): void {
-    this.send({ type: 'complete' });
+    this.send({ type: 'done', content: '' });
   }
 
   sendError(content: string): void {
